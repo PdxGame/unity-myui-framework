@@ -273,7 +273,7 @@ namespace MyUI.Editor
         private void RegisterSelection()
         {
             int total = 0;
-            foreach (Object obj in Selection.objects)
+            foreach (UnityEngine.Object obj in Selection.objects)
             {
                 string path = AssetDatabase.GetAssetPath(obj);
                 if (string.IsNullOrEmpty(path) || !path.EndsWith(".prefab"))
