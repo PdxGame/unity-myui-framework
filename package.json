@@ -1,0 +1,34 @@
+{
+  "name": "com.pdxgame.myui",
+  "version": "1.0.0",
+  "displayName": "MyUI Framework",
+  "description": "Lightweight Unity UI management framework: panel lifecycle, fixed layers with per-layer Canvas, cover/pause callbacks, instance pooling and an automatic return-navigation stack. Core is pure C# with 20 EditMode unit tests. Addressables is the default loader (optional assembly with Resources fallback).",
+  "unity": "2022.3",
+  "keywords": [
+    "ui",
+    "framework",
+    "panel",
+    "ugui",
+    "addressables",
+    "navigation"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "PdxGame",
+    "email": "1299152921@qq.com",
+    "url": "https://github.com/PdxGame"
+  },
+  "dependencies": {
+    "com.unity.ugui": "1.0.0",
+    "com.unity.textmeshpro": "3.0.6",
+    "com.unity.addressables": "1.21.21",
+    "com.unity.test-framework": "1.1.33"
+  },
+  "samples": [
+    {
+      "displayName": "MyUI Demo",
+      "description": "Zero-config demo: main menu / game page / settings popup. Open any empty scene and press Play — the boot runs automatically, no scene object or camera needed.",
+      "path": "Samples~/Demo"
+    }
+  ]
+}
