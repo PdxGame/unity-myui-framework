@@ -26,7 +26,7 @@ namespace MyUI.Editor
         // ② 注册
         private string _groupName = "UIPanels";
         private string _folder = "";          // 会话变量：仅本次使用，用户临时选择
-        private GameObject _singlePrefab;
+        private readonly List<GameObject> _dropList = new List<GameObject>();
 
         private readonly List<string> _log = new List<string>();
         private Vector2 _logScroll;
@@ -149,21 +149,33 @@ namespace MyUI.Editor
                 RegisterFolder();
             }
 
-            EditorGUILayout.LabelField("— 或批量注册（先在 Project 窗口多选几个预制体） —", EditorStyles.centeredGreyMiniLabel);
-            if (GUILayout.Button("注册 Project 中选中的面板（可多选）", GUILayout.Height(24)))
+            EditorGUILayout.LabelField("— 或拖入面板预制体（可一次拖多个） —", EditorStyles.centeredGreyMiniLabel);
+            Rect dropRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUILayout.Label("将预制体从 Project 拖到这里（支持多选拖入）", EditorStyles.centeredGreyMiniLabel, GUILayout.Height(34));
+            EditorGUILayout.EndVertical();
+            HandleDrop(dropRect);
+
+            if (_dropList.Count > 0)
             {
-                RegisterSelection();
+                foreach (GameObject p in _dropList)
+                {
+                    EditorGUILayout.LabelField("· " + p.name);
+                }
+
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("注册拖入的面板（" + _dropList.Count + "）", GUILayout.Height(26)))
+                {
+                    RegisterDropList();
+                }
+
+                if (GUILayout.Button("清空", GUILayout.Width(60)))
+                {
+                    _dropList.Clear();
+                }
+
+                EditorGUILayout.EndHorizontal();
             }
 
-            EditorGUILayout.LabelField("— 或单片注册 —", EditorStyles.centeredGreyMiniLabel);
-            EditorGUILayout.BeginHorizontal();
-            _singlePrefab = (GameObject)EditorGUILayout.ObjectField("预制体", _singlePrefab, typeof(GameObject), false);
-            if (GUILayout.Button("注册该面板", GUILayout.Width(100)))
-            {
-                RegisterSingle(_singlePrefab);
-            }
-
-            EditorGUILayout.EndHorizontal();
             EditorGUI.EndDisabledGroup();
 
             if (!hasAd)
@@ -202,11 +214,12 @@ namespace MyUI.Editor
 
             TryDisableIncludeFlags(settings); // 先关闭自动收编，避免 Resources 目录面板被伪组占用
 
+            string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { _folder });
             int added = 0;
             int repeat = 0;
             int notPanel = 0;
             int failed = 0;
-            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { _folder }))
+            foreach (string guid in prefabGuids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -225,6 +238,7 @@ namespace MyUI.Editor
                 else if (reason == "repeat")
                 {
                     repeat++;
+                    LogLine("已存在，跳过：" + prefab.name);
                 }
                 else
                 {
@@ -233,7 +247,14 @@ namespace MyUI.Editor
                 }
             }
 
+            LogLine(string.Format("目录扫描：共 {0} 个预制体（面板 {1} 个）", prefabGuids.Length, prefabGuids.Length - notPanel));
             LogLine(string.Format("目录注册完成：新增 {0}，重复 {1}，非面板 {2}，失败 {3}", added, repeat, notPanel, failed));
+
+            AddressableAssetGroup group = settings.FindGroup(_groupName);
+            if (group != null)
+            {
+                LogLine("当前组 '" + _groupName + "' 条目数：" + (group.entries != null ? group.entries.Count : 0));
+            }
         }
 
         private void RegisterSingle(GameObject prefab)
@@ -269,35 +290,78 @@ namespace MyUI.Editor
             }
         }
 
-        /// <summary>注册 Project 窗口中当前选中的多个面板预制体（多选）。</summary>
-        private void RegisterSelection()
+        /// <summary>处理拖入事件：一次可拖多个预制体进列表（去重）。</summary>
+        private void HandleDrop(Rect dropRect)
         {
-            int total = 0;
-            foreach (UnityEngine.Object obj in Selection.objects)
+            Event evt = Event.current;
+            if (!dropRect.Contains(evt.mousePosition))
             {
-                string path = AssetDatabase.GetAssetPath(obj);
-                if (string.IsNullOrEmpty(path) || !path.EndsWith(".prefab"))
+                return;
+            }
+
+            if (evt.type == EventType.DragUpdated)
+            {
+                DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
+                evt.Use();
+            }
+            else if (evt.type == EventType.DragPerform)
+            {
+                DragAndDrop.AcceptDrag();
+                evt.Use();
+                foreach (UnityEngine.Object obj in DragAndDrop.objectReferences)
+                {
+                    var go = obj as GameObject;
+                    if (go == null)
+                    {
+                        continue;
+                    }
+
+                    string path = AssetDatabase.GetAssetPath(go);
+                    if (string.IsNullOrEmpty(path) || !path.EndsWith(".prefab"))
+                    {
+                        LogLine("忽略（非预制体）：" + go.name);
+                        continue;
+                    }
+
+                    if (!_dropList.Contains(go))
+                    {
+                        _dropList.Add(go);
+                    }
+                }
+
+                LogLine("拖入 " + _dropList.Count + " 个待注册面板");
+            }
+        }
+
+        /// <summary>注册拖入列表中的所有面板（一次多个）。</summary>
+        private void RegisterDropList()
+        {
+            int added = 0;
+            int repeat = 0;
+            foreach (GameObject prefab in _dropList)
+            {
+                if (prefab == null)
                 {
                     continue;
                 }
 
-                var prefab = obj as GameObject;
-                if (prefab == null || prefab.GetComponentInChildren<UiPanel>(true) == null)
+                string path = AssetDatabase.GetAssetPath(prefab);
+                if (prefab.GetComponentInChildren<UiPanel>(true) == null)
                 {
-                    LogLine("跳过（非面板）：" + path);
+                    LogLine("跳过（非面板）：" + prefab.name);
                     continue;
                 }
 
-                string guid = AssetDatabase.AssetPathToGUID(path);
                 string reason;
-                if (RegisterEntry(guid, prefab, out reason))
+                if (RegisterEntry(AssetDatabase.AssetPathToGUID(path), prefab, out reason))
                 {
                     LogLine("已注册：" + prefab.name + "（组 " + _groupName + "）");
-                    total++;
+                    added++;
                 }
                 else if (reason == "repeat")
                 {
                     LogLine("已存在，跳过：" + prefab.name);
+                    repeat++;
                 }
                 else
                 {
@@ -305,7 +369,8 @@ namespace MyUI.Editor
                 }
             }
 
-            LogLine("选中注册完成：新增 " + total + " 个（跳过已在组内或非面板的）");
+            LogLine("拖入注册完成：新增 " + added + "，重复 " + repeat);
+            _dropList.Clear();
         }
 
         private bool RegisterEntry(string guid, GameObject prefab, out string reason)
@@ -396,11 +461,26 @@ namespace MyUI.Editor
         // ---------- 日志 ----------
         private void DrawLog()
         {
+            EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("日志", EditorStyles.boldLabel);
-            _logScroll = EditorGUILayout.BeginScrollView(_logScroll, GUILayout.Height(150));
+            if (GUILayout.Button("清空", GUILayout.Width(60)))
+            {
+                _log.Clear();
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            _logScroll = EditorGUILayout.BeginScrollView(_logScroll, GUILayout.Height(160));
+            if (_log.Count == 0)
+            {
+                EditorGUILayout.LabelField("（暂无日志）", EditorStyles.centeredGreyMiniLabel, GUILayout.Height(20));
+            }
+
             foreach (string line in _log)
             {
-                EditorGUILayout.LabelField("· " + line);
+                // 固定单行显示，超长截断；完整内容悬停可见（tooltip），避免撑坏布局
+                string display = line.Length > 240 ? line.Substring(0, 240) + " …" : line;
+                EditorGUILayout.LabelField(new GUIContent("· " + display, line), EditorStyles.label, GUILayout.Height(20));
             }
 
             EditorGUILayout.EndScrollView();
