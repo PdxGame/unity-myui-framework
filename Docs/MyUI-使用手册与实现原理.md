@@ -226,10 +226,10 @@ public sealed class TradePanel : UiPanel { }
 ### 10. API 参考
 
 ```csharp
-// ---- 启动 ----
-UiManager.AutoBoot                          // 属性，默认 true（运行时自动启动）
-UiManager.Bootstrap(IAssetLoader loader = null)  // 手动启动；loader 可覆盖
-UiManager.AssetMode                         // Addressables（默认）/ Resources
+// ---- 启动（默认全自动，以下均为可选覆盖接口）----
+UiManager.AutoBoot                          // 属性，默认 true（运行时自动启动）；false 则手动启动
+UiManager.Bootstrap(IAssetLoader loader = null)  // 手动启动；loader 可指定自定义加载器
+UiManager.AssetMode                         // Addressables（默认）/ Resources（可由窗口①配置）
 
 // ---- 打开 ----
 UiManager.OpenPanel<T>(object data = null,

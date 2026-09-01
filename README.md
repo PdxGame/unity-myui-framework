@@ -24,7 +24,8 @@ https://github.com/PdxGame/unity-myui-framework.git
 2. 导入完成后 **新建一个空场景**（File → New Scene → Basic，保存）；
 3. 点 **Play**：自动弹出主菜单 → 开始游戏 → 返回 → 设置 → 关闭 → 退出。
 
-> Demo 启动器是静态自举的（`RuntimeInitializeOnLoadMethod`）：不需要场景对象、不需要相机。
+> 框架本身**无需任何启动代码**：AutoBoot 自动启动框架、自动创建 EventSystem、加载模式自动按窗口配置。
+> Sample 附带一个 Demo 启动器（`RuntimeInitializeOnLoadMethod`）——它只是**示例入口**（负责演示打开主菜单），正式项目不需要它，也没有任何需要照抄的启动样板。
 > Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/UIPanel/` 子目录，地址 = `UIPanel/{类型名}`），克隆即跑零配置。
 > Demo 文案为英文，使用 TMP 默认字体（LiberationSans SDF）——若编辑器提示导入 TMP Essentials，执行 `Window → TextMeshPro → Import TMP Essential Resources`（TMP 标准流程一次即可）。
 
