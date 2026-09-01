@@ -178,6 +178,13 @@ UiManager.Instance.PanelOpened / PanelClosed / PanelLoadFailed
 - 高频刷新区域（如常驻 HUD）建议放置于 System 层，或局部包一层子 Canvas（勾 Override Sorting），避免频繁更新拖累整层渲染；
 - 常规面板根保持 Panel（如无特殊需求，避免为面板额外挂 Canvas 拆散合批）。
 
+### 11. 扩展层级
+
+层级由 `UiLayer` 枚举驱动：新增一层只需在枚举中追加一个成员（如 `Trade`），
+`UiRoot` 启动时按枚举自动创建对应 Canvas（sortingOrder = 层级值 × LayerOrderStep），
+遮挡链按枚举顺序自动衔接，无需改动其它代码；插在中间层级同样成立。
+不使用的层级留空即可（不占渲染开销，面板不挂入即无任何成本）。
+
 ---
 
 ## 第二部分：实现原理
