@@ -18,7 +18,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 依赖（ugui / textmeshpro / addressables / test-framework）自动安装。
 
-**方式 B**：将 `Runtime/`、`Editor/`、`Tests/` 与 `package.json` 拷贝进项目任意目录。
+**方式 B**：将 `Runtime/`、`Editor/` 与 `package.json` 拷贝进项目任意目录（单元测试位于 dev 分支）。
 
 包结构：
 
@@ -30,7 +30,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集）
 ├─ Editor/MyUI.Editor/       Inspector 调试按钮、面板注册菜单
 ├─ Samples~/Demo/            示例：3 个面板（脚本 + 预制体）
-└─ Tests/                    EditMode 单测（20 条）
+└─ Tests/                    （本分支不含：单元测试位于 dev 分支，见开发者指南）
 ```
 
 ### 2. 快速开始
