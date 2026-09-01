@@ -287,7 +287,7 @@ namespace MyUI.Editor
         }
 
         /// <summary>关闭 Addressables 对 Resources 目录与场景的自动收编（尽力而为）。</summary>
-        private static void TryDisableIncludeFlags(AddressableAssetSettings settings)
+        private void TryDisableIncludeFlags(AddressableAssetSettings settings)
         {
             try
             {
