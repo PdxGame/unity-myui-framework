@@ -2,9 +2,9 @@
 
 轻量 Unity UI 管理框架（Unity 2022.3+，UGUI + TextMeshPro）。
 
-- **核心纯 C#**（零 UnityEngine 依赖，20 条 EditMode 单测）；生命周期 / 固定层级（每层独立 Canvas）/ 遮挡回调（OnCover/OnPause）/ 实例池 / 自动返回导航；
-- **默认 Addressables 加载**（可选程序集，缺失自动回退 Resources）；
-- 分层 Canvas 符合官方「动静分离」最佳实践。
+- 核心 **纯 C#**（零 UnityEngine 依赖，20 条 EditMode 单测）；生命周期 / 固定层级 / 遮挡回调（OnCover/OnPause）/ 实例池 / 自动返回导航；
+- 固定层级结构，每层独立 Canvas：跨层面板互不干扰，同层内可合批；
+- **默认 Addressables 加载**（可选程序集，缺失自动回退 Resources）。
 
 ## 安装
 

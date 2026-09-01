@@ -172,12 +172,11 @@ UiManager.Instance.PanelOpened / PanelClosed / PanelLoadFailed
 3. **面板根必须是 RectTransform**（框架会自动替换，但排版基准以根为准）。
 4. **字体材质断链**：烘焙后出现"文字不渲染 + Inspector 报错"时，用更新后的 TMPFontToolkit（已修复引用写回）重新烘焙。
 
-### 10. 性能与最佳实践（官方口径）
+### 10. 性能考虑
 
-- 每层 = 独立 Canvas：跨层互不影响 rebuild；同层可合批；
-- **动静分离**：常驻高频 HUD 放 System 层（独立 Canvas）；静态页面留在各自层；
-- 面板内个别高频 Text：包一个子 Canvas（勾 Override Sorting）局部隔离；
-- 常规页面根保持 Panel（不要每个面板都挂 Canvas，白白断批）。
+- 每层独立 Canvas：跨层的面板互不影响彼此的渲染重建；同层面板仍可合批；
+- 高频刷新区域（如常驻 HUD）建议放置于 System 层，或局部包一层子 Canvas（勾 Override Sorting），避免频繁更新拖累整层渲染；
+- 常规面板根保持 Panel（如无特殊需求，避免为面板额外挂 Canvas 拆散合批）。
 
 ---
 
