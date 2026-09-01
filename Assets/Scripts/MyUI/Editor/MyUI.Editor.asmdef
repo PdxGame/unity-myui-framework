@@ -1,0 +1,21 @@
+{
+    "name": "MyUI.Editor",
+    "rootNamespace": "MyUI.Editor",
+    "references": [
+        "MyUI.Core",
+        "MyUI.Runtime",
+        "MyUI.Demo",
+        "Unity.Addressables.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
