@@ -150,9 +150,12 @@ namespace MyUI.Editor
             }
 
             EditorGUILayout.LabelField("— 或拖入面板预制体（可一次拖多个） —", EditorStyles.centeredGreyMiniLabel);
-            Rect dropRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            GUILayout.Label("将预制体从 Project 拖到这里（支持多选拖入）", EditorStyles.centeredGreyMiniLabel, GUILayout.Height(34));
-            EditorGUILayout.EndVertical();
+            Rect dropRect = GUILayoutUtility.GetRect(0f, 48f, GUILayout.ExpandWidth(true));
+            GUIStyle ds = GetDropStyle();
+            bool hover = dropRect.Contains(Event.current.mousePosition);
+            ds.normal.textColor = hover ? new Color(1f, 0.95f, 0.6f) : new Color(0.72f, 0.8f, 1f);
+            GUI.Box(dropRect, new GUIContent("⇩  拖入面板预制体（可一次拖多个）  ⇩",
+                "在 Project 中多选预制体后拖动到此处"), ds);
             HandleDrop(dropRect);
 
             if (_dropList.Count > 0)
@@ -290,6 +293,24 @@ namespace MyUI.Editor
             }
         }
 
+        private GUIStyle _dropStyle;
+
+        /// <summary>拖入区样式：边框 + 居中加粗（悬停高亮由调用处设置文字颜色）。</summary>
+        private GUIStyle GetDropStyle()
+        {
+            if (_dropStyle == null)
+            {
+                _dropStyle = new GUIStyle(EditorStyles.helpBox);
+                _dropStyle.alignment = TextAnchor.MiddleCenter;
+                _dropStyle.fontStyle = FontStyle.Bold;
+                _dropStyle.fontSize = 12;
+                _dropStyle.padding = new RectOffset(8, 8, 6, 6);
+                _dropStyle.normal.textColor = new Color(0.72f, 0.8f, 1f);
+            }
+
+            return _dropStyle;
+        }
+
         /// <summary>处理拖入事件：一次可拖多个预制体进列表（去重）。</summary>
         private void HandleDrop(Rect dropRect)
         {
@@ -389,8 +410,22 @@ namespace MyUI.Editor
                 AddressableAssetGroup group = settings.FindGroup(_groupName);
                 if (group == null)
                 {
-                    group = settings.CreateGroup(_groupName, false, false, false,
-                        settings.DefaultGroup != null ? settings.DefaultGroup.Schemas : null, null);
+                    try
+                    {
+                        // 传空 schema 列表（避免 DefaultGroup 为空时内部空引用）
+                        group = settings.CreateGroup(_groupName, false, false, false,
+                            new List<AddressableAssetGroupSchema>(), null);
+                    }
+                    catch (Exception)
+                    {
+                        // 部分版本在组已半创建时抛异常：二次查找兜底
+                        group = settings.FindGroup(_groupName);
+                    }
+
+                    if (group == null)
+                    {
+                        LogLine("组创建失败：" + _groupName + "（请确认 Addressables 已初始化：Window → Asset Management → Addressables → Groups）");
+                    }
                 }
 
                 if (group == null)
@@ -470,17 +505,19 @@ namespace MyUI.Editor
 
             EditorGUILayout.EndHorizontal();
 
-            _logScroll = EditorGUILayout.BeginScrollView(_logScroll, GUILayout.Height(160));
+            _logScroll = EditorGUILayout.BeginScrollView(_logScroll, GUILayout.Height(180));
             if (_log.Count == 0)
             {
                 EditorGUILayout.LabelField("（暂无日志）", EditorStyles.centeredGreyMiniLabel, GUILayout.Height(20));
             }
 
+            float width = position.width - 40f;
             foreach (string line in _log)
             {
-                // 固定单行显示，超长截断；完整内容悬停可见（tooltip），避免撑坏布局
-                string display = line.Length > 240 ? line.Substring(0, 240) + " …" : line;
-                EditorGUILayout.LabelField(new GUIContent("· " + display, line), EditorStyles.label, GUILayout.Height(20));
+                GUIContent content = new GUIContent("· " + line);
+                float h = EditorStyles.wordWrappedLabel.CalcHeight(content, width);
+                EditorGUILayout.SelectableLabel(content.text, EditorStyles.wordWrappedLabel,
+                    GUILayout.Width(width), GUILayout.Height(Mathf.Max(20f, h)));
             }
 
             EditorGUILayout.EndScrollView();
