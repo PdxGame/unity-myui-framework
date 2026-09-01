@@ -2,7 +2,7 @@
   "name": "com.pdxgame.myui",
   "version": "1.0.0",
   "displayName": "MyUI Framework",
-  "description": "Lightweight Unity UI management framework: panel lifecycle, fixed layers with per-layer Canvas, cover/pause callbacks, instance pooling and an automatic return-navigation stack. Core is pure C# with 20 EditMode unit tests. Addressables is the default loader (optional assembly with Resources fallback).",
+  "description": "Lightweight Unity UI management framework: panel lifecycle, fixed layers with per-layer Canvas, cover/pause callbacks, instance pooling and an automatic return-navigation stack. Core is pure C#. Addressables is the default loader (optional assembly with Resources fallback).",
   "unity": "2022.3",
   "keywords": [
     "ui",
@@ -21,8 +21,7 @@
   "dependencies": {
     "com.unity.ugui": "1.0.0",
     "com.unity.textmeshpro": "3.0.6",
-    "com.unity.addressables": "1.21.21",
-    "com.unity.test-framework": "1.1.33"
+    "com.unity.addressables": "1.21.21"
   },
   "samples": [
     {
