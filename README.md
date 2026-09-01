@@ -34,7 +34,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 菜单 **`MyUI → Settings & Registration`** 打开管理窗口：
 
 - **① 加载模式**：勾选 Addressables（默认）/ Resources → 「保存并应用模式」即生效（自动重编译，秒级），无需改任何源码；
-- **② Addressables 面板注册**：选一个目录（或单片拖入预制体）→ 组名可填（默认 `UIPanels`，不存在自动创建）→ 自动入组、**地址自动 = 类型名**、重复自动跳过。
+- **② Addressables 面板注册**：选一个目录（或直接拖入预制体，可一次拖多个）→ 组名可填（默认 `UIPanels`，不存在自动创建）→ 自动入组、**地址自动 = 类型名**、重复自动跳过。
 
 ## 做一个新页面（5 步）
 
@@ -65,7 +65,7 @@ UIManager.CloseAll();                    // 清场
 │   ├─ MyUI.Runtime/       UIPanel 基类、UIManager 门面、UIRoot 分层、加载器、Tester
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集，默认加载方式）
 ├─ Editor/MyUI.Editor/     Inspector 调试按钮、面板注册菜单
-├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/，TMP 默认字体）
+├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/UIPanel/，TMP 默认字体）
 └─ Tests/                   EditMode 单测（20 条）
 Docs/                       使用手册与实现原理 + 两家框架源码分析报告
 ```

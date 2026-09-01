@@ -44,7 +44,7 @@ UIManager.Init();                           // 启动框架（入口一次）
 UIManager.OpenPanel<MainMenuPanel>();       // 打开面板（地址默认 = 类型名）
 
 // 关闭（面板内部）
-this.Close();                 // 等价于 Close()
+Close();
 // 关闭（框架外）
 UIManager.ClosePanel(panel);
 UIManager.ClosePanel("MainMenuPanel");
@@ -57,6 +57,8 @@ UIManager.CloseAll();         // 清场（切场景时）
 ```csharp
 UIManager.Back();
 ```
+
+> 说明：`Init()` 放在你自己的启动脚本（任意 MonoBehaviour 的 Start/Awake）即可，**不需要任何 `RuntimeInitializeOnLoadMethod` 之类标签**（Sample 的 Demo 用它只是"空场景也能演示"的示例技巧）。
 
 ### 3. 开发一个新页面（5 步）
 
@@ -302,7 +304,7 @@ UIManager.Instance.PanelLoadFailed += (name, error) => { };
   3. 已安装但用代码指定：`UIManager.AssetMode = UIAssetMode.Resources;`（Init 前设置）；
   4. `UIManager.Init(new ResourcesPanelLoader());`（显式传入）。
 - **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`）；约定子目录 `UIPanel/` 与其对齐（地址 `UIPanel/{类型名}`）；
-- **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("类型名")` 同步加载（无需组、无需注册、无需配置资产）；
+- **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("UIPanel/{类型名}")` 同步加载（无需组、无需注册、无需配置资产）；
 - **注意事项**：Resources 目录内容会全部打入安装包（无法按需/分包/远程），同步加载适合原型与小项目；示例 Demo 即此模式。
 
 两种模式可共存：面板地址约定相同（类型名），切换加载器后资源位置对应调整即可。
