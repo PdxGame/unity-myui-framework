@@ -5,20 +5,22 @@ using UnityEngine.EventSystems;
 namespace MyUI.Examples
 {
     /// <summary>
-    /// Demo 启动器（静态自举版：不需要场景里放任何对象）。
-    /// 打开任意场景直接 Play 即出主菜单：
-    /// 游戏运行时自动执行 → 设置加载方式（Resources 兼容模式，本 Demo 零配置即跑）
-    /// → 启动框架 → 打开主菜单。
-    /// 生产项目请用默认 Addressables 模式（什么都不用写，AutoBoot 自动启动）。
+    /// Demo 启动器（示例）：不需要场景里放任何对象，任意场景 Play 即出主菜单。
+    /// 使用窗口①配置的加载模式（MyUI → Settings & Registration）：
+    /// - Resources 模式：Sample 面板位于 Resources/UIPanel/，直接可跑；
+    /// - Addressables 模式：需先用窗口②把面板注册进组（地址=类型名），本示例即可跑通 Addressables 链路。
     /// </summary>
     public static class DemoBoot
     {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void BootDemo()
         {
-            UiManager.AutoBoot = false;                              // 本 Demo 自行控制启动
-            UiManager.Bootstrap(new ResourcesPanelLoader());         // 兼容模式：克隆即跑
             EnsureEventSystem();
+            if (UiManager.Instance == null)
+            {
+                UiManager.Bootstrap(); // 使用窗口配置的加载器（缺配置默认 Addressables）
+            }
+
             UiManager.OpenPanel<MainMenuPanel>();
         }
 

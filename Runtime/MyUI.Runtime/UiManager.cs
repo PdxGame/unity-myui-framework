@@ -460,7 +460,7 @@ namespace MyUI.Runtime
             if (_instance == null)
             {
                 throw new InvalidOperationException(
-                    "MyUI 未启动：请在入口处先调用 UiManager.Bootstrap(loader)（loader 可省略，默认 Resources）。");
+                    "MyUI 未启动：请在入口处先调用 UiManager.Bootstrap(loader)（loader 可省略，默认按配置 Addressables/Resources；运行时通常由 AutoBoot 自动启动）。");
             }
 
             return _instance;
