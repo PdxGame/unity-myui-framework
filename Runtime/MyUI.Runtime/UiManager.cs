@@ -91,12 +91,43 @@ namespace MyUI.Runtime
             }
 
             UiRoot.EnsureCreated();
+            EnsureEventSystem(); // UI 点击交互的刚需：场景已有 EventSystem 则不重复创建
             var go = new GameObject("MyUI Manager");
             var manager = go.AddComponent<UiManager>();
             _instance = manager; // 注意：AddComponent 后立刻登记单例（UiManager 无 Awake，必须在此赋值）
             DontDestroyOnLoad(go);
             manager.Init(loader ?? CreateDefaultLoader());
             return manager;
+        }
+
+        /// <summary>
+        /// 确保场景存在 EventSystem（按钮点击依赖）：框架启动自动执行，用户无需手动创建。
+        /// 场景已有则不创建；跨场景常驻；新输入系统项目自动使用 InputSystemUIInputModule。
+        /// </summary>
+        private static void EnsureEventSystem()
+        {
+            if (UnityEngine.EventSystems.EventSystem.current != null ||
+                UnityEngine.Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() != null)
+            {
+                return;
+            }
+
+            var go = new GameObject("EventSystem");
+            go.AddComponent<UnityEngine.EventSystems.EventSystem>();
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+            Type moduleType = Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem");
+            if (moduleType != null)
+            {
+                go.AddComponent(moduleType);
+            }
+            else
+            {
+                go.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+            }
+#else
+            go.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+#endif
+            UnityEngine.Object.DontDestroyOnLoad(go);
         }
 
         /// <summary>按 AssetMode 创建默认加载器（默认 Addressables；程序集缺失自动回退 Resources 并警告）。</summary>

@@ -35,7 +35,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 ### 2. 快速开始
 
-安装完成即可使用，无需任何启动代码（框架自动初始化）：
+安装完成即可使用，无需任何启动代码（框架自动初始化，并自动创建 EventSystem——按钮点击依赖，场景已有则不重复）：
 
 ```csharp
 using MyUI.Runtime;
