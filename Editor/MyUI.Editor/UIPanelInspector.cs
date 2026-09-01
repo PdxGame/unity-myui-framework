@@ -6,17 +6,17 @@ using UnityEngine;
 namespace MyUI.Editor
 {
     /// <summary>
-    /// UiPanel 的 Inspector 扩展：选中面板时提供调试按钮 ——
+    /// UIPanel 的 Inspector 扩展：选中面板时提供调试按钮 ——
     /// Play 模式下「打开 / 关闭」直接驱动框架；编辑模式提示先进入 Play。
     /// </summary>
-    [CustomEditor(typeof(UiPanel), true)]
-    public sealed class UiPanelInspector : UnityEditor.Editor
+    [CustomEditor(typeof(UIPanel), true)]
+    public sealed class UIPanelInspector : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
 
-            var panel = (UiPanel)target;
+            var panel = (UIPanel)target;
             EditorGUILayout.Space();
 
             if (!EditorApplication.isPlaying)
@@ -33,19 +33,19 @@ namespace MyUI.Editor
 
             if (GUILayout.Button("关闭"))
             {
-                UiManager.ClosePanel(panel);
+                UIManager.ClosePanel(panel);
             }
 
             EditorGUILayout.EndHorizontal();
         }
 
-        /// <summary>反射调用 UiManager.OpenPanel&lt;T&gt;（同 UiPanelTester 机制）。</summary>
+        /// <summary>反射调用 UIManager.OpenPanel&lt;T&gt;（同 UIPanelTester 机制）。</summary>
         internal static void OpenReflectively(System.Type panelType)
         {
-            MethodInfo openMethod = typeof(UiManager).GetMethod("OpenPanel",
+            MethodInfo openMethod = typeof(UIManager).GetMethod("OpenPanel",
                 BindingFlags.Public | BindingFlags.Static,
                 null,
-                new[] { typeof(object), typeof(System.Action<UiPanel>), typeof(System.Action<string>) },
+                new[] { typeof(object), typeof(System.Action<UIPanel>), typeof(System.Action<string>) },
                 null);
             MethodInfo generic = openMethod.MakeGenericMethod(panelType);
             generic.Invoke(null, new object[] { null, null, null });

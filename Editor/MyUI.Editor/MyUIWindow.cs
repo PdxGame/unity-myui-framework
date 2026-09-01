@@ -41,22 +41,22 @@ namespace MyUI.Editor
 
         private void OnEnable()
         {
-            _useAddressables = QueryCurrentMode() == UiAssetMode.Addressables;
+            _useAddressables = QueryCurrentMode() == UIAssetMode.Addressables;
             LogLine("窗口已打开。当前模式：" + (_useAddressables ? "Addressables" : "Resources"));
         }
 
-        private static UiAssetMode QueryCurrentMode()
+        private static UIAssetMode QueryCurrentMode()
         {
             try
             {
                 if (File.Exists(ConfigPath) && File.ReadAllText(ConfigPath).Contains("\"Resources\""))
                 {
-                    return UiAssetMode.Resources;
+                    return UIAssetMode.Resources;
                 }
             }
             catch (Exception) { }
 
-            return UiAssetMode.Addressables;
+            return UIAssetMode.Addressables;
         }
 
         private void OnGUI()
@@ -226,7 +226,7 @@ namespace MyUI.Editor
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab == null || prefab.GetComponentInChildren<UiPanel>(true) == null)
+                if (prefab == null || prefab.GetComponentInChildren<UIPanel>(true) == null)
                 {
                     notPanel++;
                     LogLine("跳过（非面板）：" + path);
@@ -275,9 +275,9 @@ namespace MyUI.Editor
                 return;
             }
 
-            if (prefab.GetComponentInChildren<UiPanel>(true) == null)
+            if (prefab.GetComponentInChildren<UIPanel>(true) == null)
             {
-                LogLine("该预制体没有 UiPanel 组件，不是面板：" + path);
+                LogLine("该预制体没有 UIPanel 组件，不是面板：" + path);
                 return;
             }
 
@@ -367,7 +367,7 @@ namespace MyUI.Editor
                 }
 
                 string path = AssetDatabase.GetAssetPath(prefab);
-                if (prefab.GetComponentInChildren<UiPanel>(true) == null)
+                if (prefab.GetComponentInChildren<UIPanel>(true) == null)
                 {
                     LogLine("跳过（非面板）：" + prefab.name);
                     continue;

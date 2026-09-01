@@ -6,12 +6,12 @@ namespace MyUI.Runtime
 {
     /// <summary>
     /// 用户面板基类：继承后覆写生命周期虚方法即可（GameFramework UIFormLogic 思路）。
-    /// 生命周期由框架（UiManagerCore）按固定次序驱动，顺序见各方法注释；
-    /// 本类实现 Core 的 IUiPanelView 并把调用转发到 protected virtual 方法。
-    /// 面板应通过 [UiPanel] 特性声明层级与行为，未标注时按默认值。
+    /// 生命周期由框架（UIManagerCore）按固定次序驱动，顺序见各方法注释；
+    /// 本类实现 Core 的 IUIPanelView 并把调用转发到 protected virtual 方法。
+    /// 面板应通过 [UIPanel] 特性声明层级与行为，未标注时按默认值。
     /// </summary>
     [DisallowMultipleComponent]
-    public abstract class UiPanel : MonoBehaviour, IUiPanelView
+    public abstract class UIPanel : MonoBehaviour, IUIPanelView
     {
         /// <summary>框架分配的实例唯一标识（仅打开期间有效；GameFramework serialId 思路）。</summary>
         public int SerialId { get; internal set; }
@@ -20,17 +20,17 @@ namespace MyUI.Runtime
         public string PanelName { get; internal set; }
 
         /// <summary>所属层级（由框架按特性 / 参数注入）。</summary>
-        public UiLayer Layer { get; internal set; }
+        public UILayer Layer { get; internal set; }
 
         /// <summary>所属运行时管理器（由工厂注入；Close 用它发关闭请求）。</summary>
-        public UiManager Manager { get; internal set; }
+        public UIManager Manager { get; internal set; }
 
-        // ---- Inspector 可视化配置（优先于代码 [UiPanel] 特性）----
+        // ---- Inspector 可视化配置（优先于代码 [UIPanel] 特性）----
         // 预制体上选中面板根节点即可在 Inspector 中直接勾选，无需为每个面板写特性。
 
-        /// <summary>所属层级（Inspector 选择；不勾选时按 [UiPanel] 特性或默认值 Normal）。</summary>
+        /// <summary>所属层级（Inspector 选择；不勾选时按 [UIPanel] 特性或默认值 Normal）。</summary>
         [Tooltip("面板所属层级（示例：主菜单 Normal 全屏、窗口 Popup、飘字 Toast）")]
-        [SerializeField] internal UiLayer inspectorLayer = UiLayer.Normal;
+        [SerializeField] internal UILayer inspectorLayer = UILayer.Normal;
 
         /// <summary>是否全屏：跨层遮挡源，全屏页面打开时其下层面板会暂停逻辑（Inspector 勾选）。</summary>
         [Tooltip("全屏：作为跨层遮挡源，打开时其下层面板收到 OnCover/OnPause")]
@@ -42,7 +42,7 @@ namespace MyUI.Runtime
 
         /// <summary>
         /// 参与返回导航（Inspector 勾选；默认勾选）。飘字/过场加载条等临时 UI 取消勾选，
-        /// 打开时不会记录返回路径；也可用特性 [UiPanel(Stackable = false)] 声明，任一为否即不入栈。
+        /// 打开时不会记录返回路径；也可用特性 [UIPanel(Stackable = false)] 声明，任一为否即不入栈。
         /// </summary>
         [Tooltip("参与返回导航：取消勾选则打开时不影响返回历史（飘字/过场提示用）")]
         [SerializeField] internal bool inspectorStackable = true;
@@ -102,25 +102,25 @@ namespace MyUI.Runtime
             var btn = Find<Button>(nodeName);
             if (btn == null)
             {
-                Debug.LogWarning($"[UiPanel] 未找到按钮节点或缺失 Button 组件: {nodeName}", this);
+                Debug.LogWarning($"[UIPanel] 未找到按钮节点或缺失 Button 组件: {nodeName}", this);
                 return;
             }
 
             btn.onClick.AddListener(onClick);
         }
 
-        // ---------- IUiPanelView 显式实现：转发给可覆写虚方法 ----------
-        void IUiPanelView.OnInit() => OnInit();
-        void IUiPanelView.OnOpen(object userData) => OnOpen(userData);
-        void IUiPanelView.OnShow() => OnShow();
-        void IUiPanelView.OnCover() => OnCover();
-        void IUiPanelView.OnReveal() => OnReveal();
-        void IUiPanelView.OnPause() => OnPause();
-        void IUiPanelView.OnResume() => OnResume();
-        void IUiPanelView.OnHide() => OnHide();
-        void IUiPanelView.OnClose(bool pooled) => OnClose(pooled);
-        void IUiPanelView.OnDestroyed() => OnDestroyed();
-        void IUiPanelView.OnTick(float deltaTime) => OnTick(deltaTime);
+        // ---------- IUIPanelView 显式实现：转发给可覆写虚方法 ----------
+        void IUIPanelView.OnInit() => OnInit();
+        void IUIPanelView.OnOpen(object userData) => OnOpen(userData);
+        void IUIPanelView.OnShow() => OnShow();
+        void IUIPanelView.OnCover() => OnCover();
+        void IUIPanelView.OnReveal() => OnReveal();
+        void IUIPanelView.OnPause() => OnPause();
+        void IUIPanelView.OnResume() => OnResume();
+        void IUIPanelView.OnHide() => OnHide();
+        void IUIPanelView.OnClose(bool pooled) => OnClose(pooled);
+        void IUIPanelView.OnDestroyed() => OnDestroyed();
+        void IUIPanelView.OnTick(float deltaTime) => OnTick(deltaTime);
 
         /// <summary>视图创建完成立即调用，整个生命周期仅一次（池复用不再调用）。</summary>
         protected virtual void OnInit() { }

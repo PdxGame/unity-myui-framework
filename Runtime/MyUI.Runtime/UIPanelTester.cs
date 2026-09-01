@@ -11,7 +11,7 @@ namespace MyUI.Runtime
     /// Play 模式下点 Open（或勾选 OpenOnStart）。
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class UiPanelTester : MonoBehaviour
+    public sealed class UIPanelTester : MonoBehaviour
     {
         [SerializeField] private string panelTypeName = "";
         [SerializeField] private bool openOnStart = false;
@@ -24,24 +24,24 @@ namespace MyUI.Runtime
             }
         }
 
-        /// <summary>按类型名打开面板（同 UiManager.OpenPanel&lt;T&gt;）。</summary>
+        /// <summary>按类型名打开面板（同 UIManager.OpenPanel&lt;T&gt;）。</summary>
         public void Open()
         {
             Type type = ResolvePanelType(panelTypeName);
             if (type == null)
             {
-                Debug.LogError("[MyUI] UiPanelTester 找不到面板类型: " + panelTypeName);
+                Debug.LogError("[MyUI] UIPanelTester 找不到面板类型: " + panelTypeName);
                 return;
             }
 
-            MethodInfo openMethod = typeof(UiManager).GetMethod(nameof(UiManager.OpenPanel),
+            MethodInfo openMethod = typeof(UIManager).GetMethod(nameof(UIManager.OpenPanel),
                 BindingFlags.Public | BindingFlags.Static,
                 null,
-                new[] { typeof(object), typeof(Action<UiPanel>), typeof(Action<string>) },
+                new[] { typeof(object), typeof(Action<UIPanel>), typeof(Action<string>) },
                 null);
             if (openMethod == null)
             {
-                Debug.LogError("[MyUI] UiManager.OpenPanel 签名变化，UiPanelTester 需要更新");
+                Debug.LogError("[MyUI] UIManager.OpenPanel 签名变化，UIPanelTester 需要更新");
                 return;
             }
 
@@ -55,7 +55,7 @@ namespace MyUI.Runtime
             Type type = ResolvePanelType(panelTypeName);
             if (type != null)
             {
-                UiManager.ClosePanel(type.Name);
+                UIManager.ClosePanel(type.Name);
             }
         }
 
@@ -77,7 +77,7 @@ namespace MyUI.Runtime
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 Type type = assembly.GetType(name);
-                if (type != null && typeof(UiPanel).IsAssignableFrom(type))
+                if (type != null && typeof(UIPanel).IsAssignableFrom(type))
                 {
                     return type;
                 }
@@ -85,7 +85,7 @@ namespace MyUI.Runtime
 
             return AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => SafeGetTypes(a))
-                .FirstOrDefault(t => t.Name == name && typeof(UiPanel).IsAssignableFrom(t));
+                .FirstOrDefault(t => t.Name == name && typeof(UIPanel).IsAssignableFrom(t));
         }
 
         private static Type[] SafeGetTypes(Assembly assembly)

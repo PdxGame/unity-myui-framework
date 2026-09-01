@@ -26,7 +26,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 ├─ package.json              UPM 元数据（依赖 / Sample 清单）
 ├─ Runtime/
 │   ├─ MyUI.Core/            纯 C# 状态机：打开/关闭/合并/取消/遮挡/暂停/池/导航
-│   ├─ MyUI.Runtime/         UiPanel 基类、UiManager 门面、UiRoot 分层、加载器、Tester
+│   ├─ MyUI.Runtime/         UIPanel 基类、UIManager 门面、UIRoot 分层、加载器、Tester
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集）
 ├─ Editor/MyUI.Editor/       Inspector 调试按钮、面板注册菜单
 ├─ Samples~/Demo/            示例：3 个面板（脚本 + 预制体）
@@ -35,27 +35,27 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 ### 2. 快速开始
 
-入口处调用一次 `UiManager.Init()`（唯一启动方式，幂等），随后全局可用（Init 会自动创建 UI 根与 EventSystem、按窗口①配置绑定加载器）：
+入口处调用一次 `UIManager.Init()`（唯一启动方式，幂等），随后全局可用（Init 会自动创建 UI 根与 EventSystem、按窗口①配置绑定加载器）：
 
 ```csharp
 using MyUI.Runtime;
 
-UiManager.Init();                           // 启动框架（入口一次）
-UiManager.OpenPanel<MainMenuPanel>();       // 打开面板（地址默认 = 类型名）
+UIManager.Init();                           // 启动框架（入口一次）
+UIManager.OpenPanel<MainMenuPanel>();       // 打开面板（地址默认 = 类型名）
 
 // 关闭（面板内部）
 this.Close();                 // 等价于 Close()
 // 关闭（框架外）
-UiManager.ClosePanel(panel);
-UiManager.ClosePanel("MainMenuPanel");
-UiManager.ClosePanel<MainMenuPanel>();
-UiManager.CloseAll();         // 清场（切场景时）
+UIManager.ClosePanel(panel);
+UIManager.ClosePanel("MainMenuPanel");
+UIManager.ClosePanel<MainMenuPanel>();
+UIManager.CloseAll();         // 清场（切场景时）
 ```
 
 打开新页面时框架自动记录返回路径，`Back()` 在有历史时回退：
 
 ```csharp
-UiManager.Back();
+UIManager.Back();
 ```
 
 ### 3. 开发一个新页面（5 步）
@@ -65,7 +65,7 @@ UiManager.Back();
 ```csharp
 using MyUI.Runtime;
 
-public sealed class ShopPanel : UiPanel
+public sealed class ShopPanel : UIPanel
 {
     protected override void OnInit()
     {
@@ -89,7 +89,7 @@ public sealed class ShopPanel : UiPanel
 **第 5 步：打开**：
 
 ```csharp
-UiManager.OpenPanel<ShopPanel>(shopData);   // 可选传数据，OnOpen 里接收
+UIManager.OpenPanel<ShopPanel>(shopData);   // 可选传数据，OnOpen 里接收
 ```
 
 ### 4. 生命周期
@@ -122,7 +122,7 @@ UiManager.OpenPanel<ShopPanel>(shopData);   // 可选传数据，OnOpen 里接�
 
 ```csharp
 // 打开时传入
-UiManager.OpenPanel<ResultPanel>(score);
+UIManager.OpenPanel<ResultPanel>(score);
 
 // 面板内接收
 protected override void OnOpen(object userData)
@@ -139,9 +139,9 @@ protected override void OnOpen(object userData)
 
 ### 5. 配置项（特性与 Inspector，两者等价，Inspector 优先）
 
-| 配置 | `[UiPanel]` 特性 | 预制体 Inspector（UiPanel 组件） | 说明 |
+| 配置 | `[UIPanel]` 特性 | 预制体 Inspector（UIPanel 组件） | 说明 |
 |---|---|---|---|
-| 层级 | `[UiPanel(UiLayer.Popup)]` | 层级下拉 | 所在层（见 §6） |
+| 层级 | `[UIPanel(UILayer.Popup)]` | 层级下拉 | 所在层（见 §6） |
 | 全屏 | `FullScreen = true` | 全屏勾选 | 打开时其下层面板收到 `OnPause` |
 | 池化 | `Poolable = false` | 池化勾选 | 关闭时是否入池复用 |
 | 返回导航 | `Stackable = false` | 参与返回导航勾选 | 飘字/过场 UI 设为 false |
@@ -167,10 +167,10 @@ protected override void OnOpen(object userData)
 
 #### 扩展层级（修改枚举，共 3 行以内）
 
-想增加一层，只需在 `UiLayer` 枚举中追加成员（框架代码位置：包内 `Runtime/MyUI.Core/UiLayer.cs`）：
+想增加一层，只需在 `UILayer` 枚举中追加成员（框架代码位置：包内 `Runtime/MyUI.Core/UILayer.cs`）：
 
 ```csharp
-public enum UiLayer
+public enum UILayer
 {
     Background,
     Normal,
@@ -184,13 +184,13 @@ public enum UiLayer
 
 保存编译后自动生效：
 
-- `UiRoot` 启动时按枚举自动为 `Trade` 创建独立 Canvas（排序 = 6 × 100 = 600，位于 Toast 之上）；
+- `UIRoot` 启动时按枚举自动为 `Trade` 创建独立 Canvas（排序 = 6 × 100 = 600，位于 Toast 之上）；
 - 遮挡链自动衔接：`Trade` 层的非全屏面板不暂停下层、全屏面板遮挡至其下所有层；
 - 代码中即可引用：
 
 ```csharp
-[UiPanel(UiLayer.Trade)]
-public sealed class TradePanel : UiPanel { }
+[UIPanel(UILayer.Trade)]
+public sealed class TradePanel : UIPanel { }
 ```
 
 补充说明：
@@ -227,39 +227,39 @@ public sealed class TradePanel : UiPanel { }
 
 ```csharp
 // ---- 启动（唯一入口：Init，幂等）----
-UiManager.Init();                                   // 启动框架（入口一次；按窗口①配置绑定加载器）
-UiManager.Init(IAssetLoader loader);                // 自定义加载器启动
-UiManager.AssetMode                                 // Addressables（默认）/ Resources（窗口①或代码均可）
+UIManager.Init();                                   // 启动框架（入口一次；按窗口①配置绑定加载器）
+UIManager.Init(IAssetLoader loader);                // 自定义加载器启动
+UIManager.AssetMode                                 // Addressables（默认）/ Resources（窗口①或代码均可）
 
 // ---- 打开 ----
-UiManager.OpenPanel<T>(object data = null,
-    Action<UiPanel> onOpened = null, Action<string> onFailed = null);
-UiManager.OpenPanel<T>(string address, object data = null, ...);   // 显式地址
-UiManager.OpenPanelAsync<T>(object data = null);                   // Task 版
+UIManager.OpenPanel<T>(object data = null,
+    Action<UIPanel> onOpened = null, Action<string> onFailed = null);
+UIManager.OpenPanel<T>(string address, object data = null, ...);   // 显式地址
+UIManager.OpenPanelAsync<T>(object data = null);                   // Task 版
 
 // ---- 关闭 ----
 panel.Close(bool immediate = false);
-UiManager.ClosePanel(UiPanel panel, bool immediate = false);
-UiManager.ClosePanel(string panelName, bool immediate = false);
-UiManager.ClosePanel<T>(bool immediate = false);
-UiManager.CloseAll(bool immediate = false);   // immediate=true 跳过关闭延迟
+UIManager.ClosePanel(UIPanel panel, bool immediate = false);
+UIManager.ClosePanel(string panelName, bool immediate = false);
+UIManager.ClosePanel<T>(bool immediate = false);
+UIManager.CloseAll(bool immediate = false);   // immediate=true 跳过关闭延迟
 
 // ---- 查询 ----
-UiManager.GetPanel<T>();      // 单实例语义，未打开返回 null
-UiManager.IsOpen<T>();
+UIManager.GetPanel<T>();      // 单实例语义，未打开返回 null
+UIManager.IsOpen<T>();
 
 // ---- 导航 ----
-UiManager.Back();             // 有历史才关当前页
+UIManager.Back();             // 有历史才关当前页
 
 // ---- 事件 ----
-UiManager.Instance.PanelOpened     += r => { };             // (PanelRecord)
-UiManager.Instance.PanelClosed     += (r, pooled) => { };   // (PanelRecord, bool)
-UiManager.Instance.PanelLoadFailed += (name, error) => { };
+UIManager.Instance.PanelOpened     += r => { };             // (PanelRecord)
+UIManager.Instance.PanelClosed     += (r, pooled) => { };   // (PanelRecord, bool)
+UIManager.Instance.PanelLoadFailed += (name, error) => { };
 ```
 
 ### 11. 资源加载
 
-- **加载模式**：菜单 `MyUI → Settings & Registration` ①区勾选 Addressables（默认）/ Resources → 保存即应用（自动重编译，秒级）；也可代码指定 `UiManager.AssetMode`；
+- **加载模式**：菜单 `MyUI → Settings & Registration` ①区勾选 Addressables（默认）/ Resources → 保存即应用（自动重编译，秒级）；也可代码指定 `UIManager.AssetMode`；
 - **默认 Addressables**：`Init()` 自动选用 `AddressablesPanelLoader`（程序集缺失时回退 Resources 并打警告）；
 - **回退**：`ResourcesPanelLoader`（地址 = 类型名 + `UIPanel/` 前缀，预制体放任意 `Resources/` 目录）；
 - **自定义**：实现 `IAssetLoader`（`LoadViewAsync` / `ReleaseView` / `DefaultAddress`），`Init(myLoader)` 传入；
@@ -277,7 +277,7 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 
 - **地址 = 面板类型名**（如 `ShopPanel`）。框架默认地址约定（`DefaultAddress`）即类型名；
 - 地址与类名不一致会导致加载失败：Console 报 `InvalidKeyException: No Location found for Key=...`；
-- 例外：确需自定义地址时，用 `[UiPanel(Address = "...")]`（该面板固定用）或 `OpenPanel<T>("地址")`（仅本次调用）。
+- 例外：确需自定义地址时，用 `[UIPanel(Address = "...")]`（该面板固定用）或 `OpenPanel<T>("地址")`（仅本次调用）。
 
 **命名三统一**（强烈建议）
 
@@ -299,8 +299,8 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 - **触发方式**（任一即可）：
   1. 窗口勾选：`MyUI → Settings & Registration` ①区选「Resources」→ 保存并应用（推荐）；
   2. 项目不安装 Addressables 包 —— `Init()` 自动回退并打印一次警告；
-  3. 已安装但用代码指定：`UiManager.AssetMode = UiAssetMode.Resources;`（Init 前设置）；
-  4. `UiManager.Init(new ResourcesPanelLoader());`（显式传入）。
+  3. 已安装但用代码指定：`UIManager.AssetMode = UIAssetMode.Resources;`（Init 前设置）；
+  4. `UIManager.Init(new ResourcesPanelLoader());`（显式传入）。
 - **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`）；约定子目录 `UIPanel/` 与其对齐（地址 `UIPanel/{类型名}`）；
 - **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("类型名")` 同步加载（无需组、无需注册、无需配置资产）；
 - **注意事项**：Resources 目录内容会全部打入安装包（无法按需/分包/远程），同步加载适合原型与小项目；示例 Demo 即此模式。
@@ -309,7 +309,7 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 
 ### 12. 调试工具
 
-- **UiPanelTester**：场景中任意 GameObject 挂该组件，填面板类型全名（如 `MyUI.Examples.MainMenuPanel`），Play 中一键打开；
+- **UIPanelTester**：场景中任意 GameObject 挂该组件，填面板类型全名（如 `MyUI.Examples.MainMenuPanel`），Play 中一键打开；
 - **Inspector 调试按钮**：选中面板预制体，Inspector 顶部有打开/关闭按钮（编辑模式可预览生命周期流程）。
 
 ### 13. 单元测试
@@ -337,9 +337,9 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 
 ### 1. 分层动机
 
-Core（纯 C#）→ Runtime（Unity 胶水）→ Loaders（可选）：Core 只通过 `IAssetLoader` / `IUiPanelFactory` / `IUiPanelView` 与世界交互，可单测、可换、零 Unity 依赖。
+Core（纯 C#）→ Runtime（Unity 胶水）→ Loaders（可选）：Core 只通过 `IAssetLoader` / `IUIPanelFactory` / `IUIPanelView` 与世界交互，可单测、可换、零 Unity 依赖。
 
-### 2. 核心数据结构（UiManagerCore）
+### 2. 核心数据结构（UIManagerCore）
 
 `_all`（激活记录）、`_singles`（单实例索引）、`_bySerial`（serialId 索引）、`_pool`（地址→空闲实例）、`_closing`（延迟关闭队列）、三把尺子（`_nextSerialId` / `_openOrder` / `_time`）。
 

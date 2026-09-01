@@ -6,7 +6,7 @@ namespace MyUI.Core
     /// 层内面板按打开顺序以 SiblingIndex 排序。
     /// 高层级的面板会遮挡低层级的所有面板（触发 OnCover / OnPause 回调）。
     /// </summary>
-    public enum UiLayer
+    public enum UILayer
     {
         Background = 0, // 背景 / 底层（全屏底图、场景 UI 载体）
         Normal = 1,     // 常规界面（主菜单、主界面）

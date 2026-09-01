@@ -8,7 +8,7 @@ namespace MyUI.Core
     ///
     /// 职责：面板打开 / 关闭流程编排、重复打开（单实例）合并、加载中取消、遮挡 / 暂停状态计算、
     /// 导航栈、实例池记账与淘汰决策。不直接操作任何视图对象，
-    /// 全部通过 IAssetLoader / IUiPanelFactory / IUiPanelView 接口驱动，
+    /// 全部通过 IAssetLoader / IUIPanelFactory / IUIPanelView 接口驱动，
     /// 因此可在 EditMode 中用假实现做单元测试（无需 Play 模式与 Unity 资源）。
     ///
     /// 生命周期调用顺序（文档化契约，测试保证）：
@@ -25,10 +25,10 @@ namespace MyUI.Core
     /// 单实例语义：未标注 AllowMulti 的面板重复打开 = 聚焦（重新 OnOpen/OnShow + 置顶）；
     /// 加载中的重复打开会合并，只触发一次加载。
     /// </summary>
-    public sealed class UiManagerCore
+    public sealed class UIManagerCore
     {
         private readonly IAssetLoader _loader;
-        private readonly IUiPanelFactory _factory;
+        private readonly IUIPanelFactory _factory;
 
         /// <summary>全部激活记录（含等待加载完成的已取消记录，用于资源释放）。</summary>
         private readonly List<PanelRecord> _all = new List<PanelRecord>();
@@ -72,7 +72,7 @@ namespace MyUI.Core
         public event Action<PanelClosedEventArgs> PanelClosed;
         public event Action<PanelLoadFailedEventArgs> PanelLoadFailed;
 
-        public UiManagerCore(IAssetLoader loader, IUiPanelFactory factory)
+        public UIManagerCore(IAssetLoader loader, IUIPanelFactory factory)
         {
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
@@ -86,7 +86,7 @@ namespace MyUI.Core
         /// 单实例已打开 → 立即以现有视图回调（聚焦语义）；加载中 → 合并等待一次加载。
         /// 注：被取消的打开请求会收到 (null, "cancelled")。
         /// </summary>
-        public void OpenPanel(Type panelType, string panelName, string address, UiLayer layer,
+        public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
             bool fullScreen, bool allowMulti, bool poolable, object userData,
             Action<object, string> onDone)
         {
@@ -182,11 +182,11 @@ namespace MyUI.Core
             {
                 object pooled = queue.Dequeue();
                 _pooledAt.Remove(pooled);
-                var view = pooled as IUiPanelView;
+                var view = pooled as IUIPanelView;
                 if (view == null)
                 {
                     // 池中对象异常（理论上不会发生）：销毁重建
-                    _factory.DestroyView(pooled as IUiPanelView);
+                    _factory.DestroyView(pooled as IUIPanelView);
                 }
                 else
                 {
@@ -228,7 +228,7 @@ namespace MyUI.Core
                 return;
             }
 
-            IUiPanelView view = _factory.AttachView(record, viewInstance);
+            IUIPanelView view = _factory.AttachView(record, viewInstance);
             record.View = view;
 
             if (record.State == PanelState.Closing || record.State == PanelState.Closed)
@@ -449,7 +449,7 @@ namespace MyUI.Core
 
                         queue.Dequeue();
                         _pooledAt.Remove(view);
-                        if (view is IUiPanelView panelView)
+                        if (view is IUIPanelView panelView)
                         {
                             panelView.OnDestroyed();
                             _factory.DestroyView(panelView);

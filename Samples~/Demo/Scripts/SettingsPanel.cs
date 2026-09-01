@@ -7,8 +7,8 @@ namespace MyUI.Examples
     /// <summary>
     /// 设置弹窗（Popup 非全屏）：关闭按钮。验证非全屏弹窗只遮挡不暂停下层。
     /// </summary>
-    [UiPanel(UiLayer.Popup)]
-    public sealed class SettingsPanel : UiPanel
+    [UIPanel(UILayer.Popup)]
+    public sealed class SettingsPanel : UIPanel
     {
         protected override void OnInit()
         {

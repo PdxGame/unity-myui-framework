@@ -4,22 +4,22 @@ using MyUI.Core;
 namespace MyUI.Runtime
 {
     /// <summary>
-    /// 面板声明特性：标注在 UiPanel 子类上，描述层级与行为。
+    /// 面板声明特性：标注在 UIPanel 子类上，描述层级与行为。
     /// 未标注时按默认值（Normal 层、非全屏、单实例、可入池）。
-    /// 用法示例：[UiPanel(UiLayer.Popup, FullScreen = true)]
+    /// 用法示例：[UIPanel(UILayer.Popup, FullScreen = true)]
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-    public sealed class UiPanelAttribute : Attribute
+    public sealed class UIPanelAttribute : Attribute
     {
-        public UiPanelAttribute() { }
+        public UIPanelAttribute() { }
 
-        public UiPanelAttribute(UiLayer layer)
+        public UIPanelAttribute(UILayer layer)
         {
             Layer = layer;
         }
 
         /// <summary>所属层级（默认 Normal）。</summary>
-        public UiLayer Layer { get; set; } = UiLayer.Normal;
+        public UILayer Layer { get; set; } = UILayer.Normal;
 
         /// <summary>
         /// 是否全屏：作为遮挡链顶端时，会让它下方的所有面板进入暂停态 OnPause。

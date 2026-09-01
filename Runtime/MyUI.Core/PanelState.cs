@@ -1,8 +1,8 @@
 namespace MyUI.Core
 {
     /// <summary>
-    /// 面板生命周期状态（UiManagerCore 内部状态机，GameFramework UIFormInfo.Status 思路）。
-    /// 状态迁移只发生在 UiManagerCore 内；被遮挡/暂停是 Open 状态的子标记（见 PanelRecord.Covered / Paused）。
+    /// 面板生命周期状态（UIManagerCore 内部状态机，GameFramework UIFormInfo.Status 思路）。
+    /// 状态迁移只发生在 UIManagerCore 内；被遮挡/暂停是 Open 状态的子标记（见 PanelRecord.Covered / Paused）。
     /// </summary>
     public enum PanelState
     {

@@ -1,11 +1,11 @@
 namespace MyUI.Core
 {
     /// <summary>
-    /// 面板视图生命周期抽象。Core（UiManagerCore）通过本接口按固定次序驱动面板；
-    /// Runtime 的 UiPanel（MonoBehaviour）实现本接口并把调用转发给用户覆写的 protected virtual 方法。
+    /// 面板视图生命周期抽象。Core（UIManagerCore）通过本接口按固定次序驱动面板；
+    /// Runtime 的 UIPanel（MonoBehaviour）实现本接口并把调用转发给用户覆写的 protected virtual 方法。
     /// 与 UI 框架解耦：单元测试可用假视图记录调用序列。
     /// </summary>
-    public interface IUiPanelView
+    public interface IUIPanelView
     {
         /// <summary>视图创建完成立即调用，整个生命周期仅一次（池复用不再调用）。</summary>
         void OnInit();

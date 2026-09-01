@@ -6,17 +6,17 @@ using NUnit.Framework;
 namespace MyUI.Tests
 {
     /// <summary>
-    /// UiManagerCore 状态机单元测试（EditMode）。
+    /// UIManagerCore 状态机单元测试（EditMode）。
     /// 全部通过假加载器 / 假工厂 / 假视图驱动，不依赖 Play 模式与 Unity 资源；
     /// 覆盖：打开 / 关闭顺序、单实例聚焦、双开合并、加载中取消、遮挡 / 暂停规则、
     /// 导航栈、池复用 / 容量 / 过期淘汰、延迟销毁、加载失败、多实例。
     /// </summary>
-    public class UiManagerCoreTests
+    public class UIManagerCoreTests
     {
         /// <summary>占位面板类型（仅作为 Type 引用，加载走假加载器）。</summary>
         private sealed class TestPanel { }
 
-        private sealed class FakeView : IUiPanelView
+        private sealed class FakeView : IUIPanelView
         {
             public readonly string Name;
             public readonly List<string> Log = new List<string>();
@@ -41,11 +41,11 @@ namespace MyUI.Tests
             public void OnTick(float deltaTime) => Log.Add("tick");
         }
 
-        private sealed class FakeFactory : IUiPanelFactory
+        private sealed class FakeFactory : IUIPanelFactory
         {
             public readonly List<string> Log = new List<string>();
 
-            public IUiPanelView AttachView(PanelRecord record, object viewInstance)
+            public IUIPanelView AttachView(PanelRecord record, object viewInstance)
             {
                 Log.Add("attach:" + record.PanelName + ":" + record.SerialId);
                 var view = new FakeView(record.PanelName, record.SerialId);
@@ -53,16 +53,16 @@ namespace MyUI.Tests
                 return view;
             }
 
-            public void DestroyView(IUiPanelView view) => Log.Add("destroy:" + ((FakeView)view).Name);
-            public void SetViewActive(IUiPanelView view, bool active) => Log.Add("active:" + ((FakeView)view).Name + ":" + active);
-            public void MoveToTop(IUiPanelView view) => Log.Add("top:" + ((FakeView)view).Name);
+            public void DestroyView(IUIPanelView view) => Log.Add("destroy:" + ((FakeView)view).Name);
+            public void SetViewActive(IUIPanelView view, bool active) => Log.Add("active:" + ((FakeView)view).Name + ":" + active);
+            public void MoveToTop(IUIPanelView view) => Log.Add("top:" + ((FakeView)view).Name);
 
-            public void RefreshViewContext(IUiPanelView view, PanelRecord record)
+            public void RefreshViewContext(IUIPanelView view, PanelRecord record)
             {
                 ((FakeView)view).SerialId = record.SerialId;
             }
 
-            public void OnViewReady(IUiPanelView view, PanelRecord record)
+            public void OnViewReady(IUIPanelView view, PanelRecord record)
             {
                 Log.Add("ready:" + ((FakeView)view).Name);
             }
@@ -116,14 +116,14 @@ namespace MyUI.Tests
 
         // ---------- 工具 ----------
 
-        private static UiManagerCore NewCore(out FakeLoader loader, out FakeFactory factory)
+        private static UIManagerCore NewCore(out FakeLoader loader, out FakeFactory factory)
         {
             loader = new FakeLoader();
             factory = new FakeFactory();
-            return new UiManagerCore(loader, factory);
+            return new UIManagerCore(loader, factory);
         }
 
-        private static void Open(UiManagerCore core, string name, UiLayer layer,
+        private static void Open(UIManagerCore core, string name, UILayer layer,
             bool fullScreen = false, bool allowMulti = false, bool poolable = true,
             object userData = null, Action<object, string> onDone = null)
         {
@@ -133,25 +133,25 @@ namespace MyUI.Tests
         // ---------- 打开 / 关闭流程 ----------
 
         [Test]
-        public void UiLayer_Order_IsStable()
+        public void UILayer_Order_IsStable()
         {
-            Assert.Less((int)UiLayer.Background, (int)UiLayer.Normal);
-            Assert.Less((int)UiLayer.Normal, (int)UiLayer.Popup);
-            Assert.Less((int)UiLayer.Popup, (int)UiLayer.Guide);
-            Assert.Less((int)UiLayer.Guide, (int)UiLayer.System);
-            Assert.Less((int)UiLayer.System, (int)UiLayer.Toast);
+            Assert.Less((int)UILayer.Background, (int)UILayer.Normal);
+            Assert.Less((int)UILayer.Normal, (int)UILayer.Popup);
+            Assert.Less((int)UILayer.Popup, (int)UILayer.Guide);
+            Assert.Less((int)UILayer.Guide, (int)UILayer.System);
+            Assert.Less((int)UILayer.System, (int)UILayer.Toast);
         }
 
         [Test]
         public void Open_CallsLifecycleInOrder_AndFiresEvent()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             bool opened = false;
             core.PanelOpened += _ => opened = true;
             object cbView = null;
             string cbError = "unset";
 
-            Open(core, "Main", UiLayer.Normal, onDone: (v, e) => { cbView = v; cbError = e; });
+            Open(core, "Main", UILayer.Normal, onDone: (v, e) => { cbView = v; cbError = e; });
 
             FakeView view = (FakeView)(core.GetRecord("Main").View);
             Assert.AreEqual(new[] { "init", "open:null", "show" }, view.Log.ToArray());
@@ -165,8 +165,8 @@ namespace MyUI.Tests
         [Test]
         public void Open_SingleInstance_Refocuses_WithoutReload()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "Main", UiLayer.Normal);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "Main", UILayer.Normal);
             FakeView view = (FakeView)(core.GetRecord("Main").View);
             view.Log.Clear();
             factory.Log.Clear();
@@ -174,7 +174,7 @@ namespace MyUI.Tests
             core.PanelOpened += _ => openedEvents++;
 
             object doneView = null;
-            Open(core, "Main", UiLayer.Normal, userData: "x", onDone: (v, e) => doneView = v);
+            Open(core, "Main", UILayer.Normal, userData: "x", onDone: (v, e) => doneView = v);
 
             Assert.AreEqual(1, loader.LoadCount, "聚焦不应重新加载");
             Assert.AreEqual(new[] { "open:x", "show" }, view.Log.ToArray(), "聚焦 = 重新 OnOpen/OnShow，不重复 OnInit");
@@ -186,11 +186,11 @@ namespace MyUI.Tests
         [Test]
         public void Open_WhileLoading_MergesIntoSingleLoad()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             loader.HoldResults = true;
             object v1 = null, v2 = null;
-            Open(core, "Main", UiLayer.Normal, onDone: (v, e) => v1 = v);
-            Open(core, "Main", UiLayer.Normal, userData: "y", onDone: (v, e) => v2 = v);
+            Open(core, "Main", UILayer.Normal, onDone: (v, e) => v1 = v);
+            Open(core, "Main", UILayer.Normal, userData: "y", onDone: (v, e) => v2 = v);
 
             Assert.AreEqual(1, loader.LoadCount, "加载中合并，只加载一次");
             loader.Flush();
@@ -205,10 +205,10 @@ namespace MyUI.Tests
         [Test]
         public void Close_WhileLoading_CancelsWithCallback_AndReleasesInstance()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             loader.HoldResults = true;
             string cbError = "unset";
-            Open(core, "Main", UiLayer.Normal, onDone: (v, e) => cbError = e);
+            Open(core, "Main", UILayer.Normal, onDone: (v, e) => cbError = e);
 
             core.ClosePanel(core.GetRecord("Main").SerialId, immediate: true);
 
@@ -226,8 +226,8 @@ namespace MyUI.Tests
         [Test]
         public void Close_Immediate_CallsHideCloseDestroyed_InOrder()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "Main", UiLayer.Normal, poolable: false);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "Main", UILayer.Normal, poolable: false);
             FakeView view = (FakeView)(core.GetRecord("Main").View);
             view.Log.Clear();
 
@@ -247,9 +247,9 @@ namespace MyUI.Tests
         [Test]
         public void Close_Delayed_FinishesAfterCloseDelay()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             core.CloseDelaySeconds = 0.5f;
-            Open(core, "Main", UiLayer.Normal, poolable: false);
+            Open(core, "Main", UILayer.Normal, poolable: false);
             PanelRecord record = core.GetRecord("Main");
             FakeView view = (FakeView)record.View;
             view.Log.Clear();
@@ -272,8 +272,8 @@ namespace MyUI.Tests
         [Test]
         public void Pool_ReusesInstance_WithoutReload()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "Main", UiLayer.Normal, poolable: true);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "Main", UILayer.Normal, poolable: true);
             FakeView view = (FakeView)(core.GetRecord("Main").View);
             core.ClosePanel(core.GetRecord("Main").SerialId, immediate: true);
             view.Log.Clear();
@@ -281,7 +281,7 @@ namespace MyUI.Tests
             Assert.IsTrue(factory.Log.Contains("active:Main:False"), "入池应 SetActive(false)");
 
             object doneView = null;
-            Open(core, "Main", UiLayer.Normal, userData: "reused", onDone: (v, e) => doneView = v);
+            Open(core, "Main", UILayer.Normal, userData: "reused", onDone: (v, e) => doneView = v);
 
             Assert.AreEqual(1, loader.LoadCount, "池复用不应再加载");
             Assert.AreSame(view, doneView);
@@ -296,11 +296,11 @@ namespace MyUI.Tests
         [Test]
         public void Pool_CapacityOverflow_DestroysExcessInstance()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             core.PoolCapacityPerAddress = 1;
-            Open(core, "T", UiLayer.Toast, allowMulti: true, poolable: true);
+            Open(core, "T", UILayer.Toast, allowMulti: true, poolable: true);
             int serialA = core.GetRecord("T").SerialId;
-            Open(core, "T", UiLayer.Toast, allowMulti: true, poolable: true);
+            Open(core, "T", UILayer.Toast, allowMulti: true, poolable: true);
             int serialB = core.GetRecord("T").SerialId;
 
             var pooledFlags = new List<bool>();
@@ -316,9 +316,9 @@ namespace MyUI.Tests
         [Test]
         public void Pool_Expiry_EvictsOnTick()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             core.PoolExpireSeconds = 5f;
-            Open(core, "Main", UiLayer.Normal, poolable: true);
+            Open(core, "Main", UILayer.Normal, poolable: true);
             FakeView view = (FakeView)(core.GetRecord("Main").View);
             core.ClosePanel(core.GetRecord("Main").SerialId, immediate: true);
             view.Log.Clear();
@@ -335,12 +335,12 @@ namespace MyUI.Tests
         [Test]
         public void Cover_SameLayer_ByLaterOpen_ThenReveal()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "A", UiLayer.Normal);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "A", UILayer.Normal);
             FakeView viewA = (FakeView)(core.GetRecord("A").View);
             viewA.Log.Clear();
 
-            Open(core, "B", UiLayer.Normal);
+            Open(core, "B", UILayer.Normal);
 
             Assert.IsTrue(core.GetRecord("A").Covered);
             CollectionAssert.AreEqual(new[] { "cover" }, viewA.Log);
@@ -353,18 +353,18 @@ namespace MyUI.Tests
         [Test]
         public void Cover_CrossLayer_RequiresFullScreen()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "A", UiLayer.Normal, fullScreen: true);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "A", UILayer.Normal, fullScreen: true);
             FakeView viewA = (FakeView)(core.GetRecord("A").View);
             viewA.Log.Clear();
 
             // 非全屏弹窗：只在高一层但不构成遮挡源
-            Open(core, "B", UiLayer.Popup, fullScreen: false);
+            Open(core, "B", UILayer.Popup, fullScreen: false);
             Assert.IsFalse(core.GetRecord("A").Covered, "非全屏高层面板不应遮挡下层");
             Assert.IsTrue(viewA.Log.Count == 0);
 
             // 全屏系统层：遮挡 + 暂停
-            Open(core, "C", UiLayer.System, fullScreen: true);
+            Open(core, "C", UILayer.System, fullScreen: true);
             Assert.IsTrue(core.GetRecord("A").Covered);
             Assert.IsTrue(core.GetRecord("A").Paused);
             CollectionAssert.AreEqual(new[] { "cover", "pause" }, viewA.Log);
@@ -379,12 +379,12 @@ namespace MyUI.Tests
         [Test]
         public void ToastLayer_NonFullScreen_DoesNotCoverAnything()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "A", UiLayer.Normal, fullScreen: true);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "A", UILayer.Normal, fullScreen: true);
             FakeView viewA = (FakeView)(core.GetRecord("A").View);
             viewA.Log.Clear();
 
-            Open(core, "Toast", UiLayer.Toast, allowMulti: true, fullScreen: false);
+            Open(core, "Toast", UILayer.Toast, allowMulti: true, fullScreen: false);
 
             Assert.IsFalse(core.GetRecord("A").Covered, "飘字 Toast 不应遮挡主界面逻辑");
             Assert.IsTrue(viewA.Log.Count == 0);
@@ -395,9 +395,9 @@ namespace MyUI.Tests
         [Test]
         public void Navigation_Top_And_Back_ClosesTopPanel()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "A", UiLayer.Normal);
-            Open(core, "B", UiLayer.Popup);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "A", UILayer.Normal);
+            Open(core, "B", UILayer.Popup);
 
             Assert.AreEqual(core.GetRecord("B").SerialId, core.GetTopOpenSerialId(), "顶层应为最后打开的 B");
 
@@ -412,9 +412,9 @@ namespace MyUI.Tests
         [Test]
         public void Navigation_Remove_OnClose_ClearsStack()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "A", UiLayer.Normal);
-            Open(core, "B", UiLayer.Popup);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "A", UILayer.Normal);
+            Open(core, "B", UILayer.Popup);
             int serialA = core.GetRecord("A").SerialId;
             int serialB = core.GetRecord("B").SerialId;
             core.Navigation.Push(core.GetTopOpenSerialId());
@@ -430,14 +430,14 @@ namespace MyUI.Tests
         [Test]
         public void CloseAll_ClosesAllInReverseOrder()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             var closedSerials = new List<int>();
             core.PanelClosed += args => closedSerials.Add(args.Record.SerialId);
-            Open(core, "A", UiLayer.Normal);
+            Open(core, "A", UILayer.Normal);
             int serialA = core.GetRecord("A").SerialId;
-            Open(core, "B", UiLayer.Normal);
+            Open(core, "B", UILayer.Normal);
             int serialB = core.GetRecord("B").SerialId;
-            Open(core, "C", UiLayer.Normal);
+            Open(core, "C", UILayer.Normal);
             int serialC = core.GetRecord("C").SerialId;
 
             core.CloseAll(immediate: true);
@@ -449,14 +449,14 @@ namespace MyUI.Tests
         [Test]
         public void Reopen_WhileClosing_CancelsDeferredClose()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             core.CloseDelaySeconds = 0.5f;
-            Open(core, "Main", UiLayer.Normal, poolable: false);
+            Open(core, "Main", UILayer.Normal, poolable: false);
             FakeView view = (FakeView)(core.GetRecord("Main").View);
             view.Log.Clear();
 
             core.ClosePanel(core.GetRecord("Main").SerialId, immediate: false);
-            Open(core, "Main", UiLayer.Normal, userData: "again");
+            Open(core, "Main", UILayer.Normal, userData: "again");
 
             Assert.AreEqual(PanelState.Open, core.GetRecord("Main").State, "关闭中重开应取消关闭");
             CollectionAssert.AreEqual(new[] { "hide", "open:again", "show" }, view.Log);
@@ -469,10 +469,10 @@ namespace MyUI.Tests
         [Test]
         public void Tick_Only_Drives_ActiveNonPausedPanels()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "A", UiLayer.Normal);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "A", UILayer.Normal);
             FakeView viewA = (FakeView)(core.GetRecord("A").View);
-            Open(core, "B", UiLayer.Normal, fullScreen: true);
+            Open(core, "B", UILayer.Normal, fullScreen: true);
             FakeView viewB = (FakeView)(core.GetRecord("B").View);
             viewA.Log.Clear();
             viewB.Log.Clear();
@@ -490,12 +490,12 @@ namespace MyUI.Tests
         [Test]
         public void LoadFailure_NotifiesCallbackAndEvent()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
             loader.FailWith = "boom";
             bool failed = false;
             core.PanelLoadFailed += _ => failed = true;
             string cbError = "unset";
-            Open(core, "Main", UiLayer.Normal, onDone: (v, e) => cbError = e);
+            Open(core, "Main", UILayer.Normal, onDone: (v, e) => cbError = e);
 
             Assert.AreEqual("boom", cbError);
             Assert.IsTrue(failed);
@@ -507,10 +507,10 @@ namespace MyUI.Tests
         [Test]
         public void AllowMulti_OpensSecondInstance()
         {
-            UiManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
-            Open(core, "Toast", UiLayer.Toast, allowMulti: true);
+            UIManagerCore core = NewCore(out FakeLoader loader, out FakeFactory factory);
+            Open(core, "Toast", UILayer.Toast, allowMulti: true);
             int serialA = core.GetRecord("Toast").SerialId;
-            Open(core, "Toast", UiLayer.Toast, allowMulti: true);
+            Open(core, "Toast", UILayer.Toast, allowMulti: true);
             int serialB = core.GetRecord("Toast").SerialId;
 
             Assert.AreNotEqual(serialA, serialB);

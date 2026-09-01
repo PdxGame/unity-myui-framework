@@ -24,7 +24,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 2. 导入完成后 **新建一个空场景**（File → New Scene → Basic，保存）；
 3. 点 **Play**：自动弹出主菜单 → 开始游戏 → 返回 → 设置 → 关闭 → 退出。
 
-> 启动 = 入口处一行 `UiManager.Init()`（唯一启动方式，幂等；流程：创建 UI 根、自动创建 EventSystem、绑定加载器）。
+> 启动 = 入口处一行 `UIManager.Init()`（唯一启动方式，幂等；流程：创建 UI 根、自动创建 EventSystem、绑定加载器）。
 > Sample 附带的 Demo 启动器（`RuntimeInitializeOnLoadMethod`）只是**示例入口**（负责演示打开主菜单），正式项目在自己入口调用 Init() 即可。
 > Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/UIPanel/` 子目录，地址 = `UIPanel/{类型名}`），克隆即跑零配置。
 > Demo 文案为英文，使用 TMP 默认字体（LiberationSans SDF）——若编辑器提示导入 TMP Essentials，执行 `Window → TextMeshPro → Import TMP Essential Resources`（TMP 标准流程一次即可）。
@@ -38,7 +38,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 ## 做一个新页面（5 步）
 
-1. 写一个类继承 `UiPanel`（配置在 `[UiPanel(...)]` 特性或预制体 Inspector 的 UiPanel 组件上选：层级/全屏/池化/入栈）；
+1. 写一个类继承 `UIPanel`（配置在 `[UIPanel(...)]` 特性或预制体 Inspector 的 UIPanel 组件上选：层级/全屏/池化/入栈）；
 2. Unity 里搭同名预制体，根节点挂上这个类；
 3. 放进你自己定的目录；
 4. 生产（Addressables）：菜单 `MyUI → Settings & Registration` → ②区选该目录（或拖入预制体）→「注册」；地址自动=类型名；
@@ -47,14 +47,14 @@ https://github.com/PdxGame/unity-myui-framework.git
 ```csharp
 using MyUI.Runtime;
 
-UiManager.Init();                       // 启动一次（入口处；幂等）
-UiManager.OpenPanel<MyPagePanel>(数据);  // 打开（返回路径自动记录）
+UIManager.Init();                       // 启动一次（入口处；幂等）
+UIManager.OpenPanel<MyPagePanel>(数据);  // 打开（返回路径自动记录）
 panel.Close();                           // 关闭
-UiManager.Back();                        // 返回（有历史时才关当前页）
-UiManager.CloseAll();                    // 清场
+UIManager.Back();                        // 返回（有历史时才关当前页）
+UIManager.CloseAll();                    // 清场
 ```
 
-加载模式由窗口①配置（`MyUI → Settings & Registration`，缺配置=Addressables）；`UiManager.AssetMode` 可代码覆盖；`Init(loader)` 可传入自定义加载器。
+加载模式由窗口①配置（`MyUI → Settings & Registration`，缺配置=Addressables）；`UIManager.AssetMode` 可代码覆盖；`Init(loader)` 可传入自定义加载器。
 
 ## 目录结构
 
@@ -62,7 +62,7 @@ UiManager.CloseAll();                    // 清场
 ├─ package.json            包描述（UPM 元数据 + 依赖 + Sample 清单）
 ├─ Runtime/
 │   ├─ MyUI.Core/          纯 C# 状态机：打开/关闭/合并/取消/遮挡/暂停/池/导航
-│   ├─ MyUI.Runtime/       UiPanel 基类、UiManager 门面、UiRoot 分层、加载器、Tester
+│   ├─ MyUI.Runtime/       UIPanel 基类、UIManager 门面、UIRoot 分层、加载器、Tester
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集，默认加载方式）
 ├─ Editor/MyUI.Editor/     Inspector 调试按钮、面板注册菜单
 ├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/，TMP 默认字体）

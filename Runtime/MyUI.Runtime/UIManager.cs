@@ -9,22 +9,22 @@ namespace MyUI.Runtime
 {
     /// <summary>
     /// UI 运行时门面（GameFramework UIComponent / QFramework UIKit 的对应物）。
-    /// 使用方式：入口处调用一次 UiManager.Init()，之后用静态 API：
-    ///   UiManager.OpenPanel&lt;SettingsPanel&gt;(data, onOpened, onFailed);
-    /// 本类同时实现 IUiPanelFactory：把加载完成的视图挂到层 Canvas、注册运行时字段并执行激活/销毁。
+    /// 使用方式：入口处调用一次 UIManager.Init()，之后用静态 API：
+    ///   UIManager.OpenPanel&lt;SettingsPanel&gt;(data, onOpened, onFailed);
+    /// 本类同时实现 IUIPanelFactory：把加载完成的视图挂到层 Canvas、注册运行时字段并执行激活/销毁。
     /// 启动时机是显式的：忘记 Init 时静态 API 会抛出明确异常提示先调用 Init。
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class UiManager : MonoBehaviour, IUiPanelFactory
+    public sealed class UIManager : MonoBehaviour, IUIPanelFactory
     {
-        private static UiManager _instance;
+        private static UIManager _instance;
 
         /// <summary>面板类型 → 解析后的声明（静态缓存，避免重复反射）。</summary>
-        private static readonly Dictionary<Type, UiPanelAttribute> AttrCache = new Dictionary<Type, UiPanelAttribute>();
+        private static readonly Dictionary<Type, UIPanelAttribute> AttrCache = new Dictionary<Type, UIPanelAttribute>();
 
-        public static UiManager Instance => _instance;
+        public static UIManager Instance => _instance;
 
-        private UiManagerCore _core;
+        private UIManagerCore _core;
         private IAssetLoader _loader;
 
         // ---- 面板状态事件（供游戏逻辑订阅；由 Core 事件转发） ----
@@ -34,14 +34,14 @@ namespace MyUI.Runtime
 
         /// <summary>资源加载方式开关。默认值来自 MyUI 窗口配置（MyUI → Settings & Registration），
         /// 缺配置时按 Addressables；代码仍可随时覆盖本属性。</summary>
-        public static UiAssetMode AssetMode { get; set; } = ResolveDefaultMode();
+        public static UIAssetMode AssetMode { get; set; } = ResolveDefaultMode();
 
         /// <summary>
         /// 默认加载模式来源于工具生成的 Assets/MyUI/MyUiLoaderConfig.cs
         /// （窗口勾选保存；缺文件时按 Addressables）。反射读取，避免 Runtime 程序集
         /// 依赖用户的 Assembly-CSharp。
         /// </summary>
-        private static UiAssetMode ResolveDefaultMode()
+        private static UIAssetMode ResolveDefaultMode()
         {
             try
             {
@@ -49,7 +49,7 @@ namespace MyUI.Runtime
                 string mode = t?.GetField("Mode", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string;
                 if (mode == "Resources")
                 {
-                    return UiAssetMode.Resources;
+                    return UIAssetMode.Resources;
                 }
             }
             catch (Exception e)
@@ -57,27 +57,27 @@ namespace MyUI.Runtime
                 Debug.LogWarning("[MyUI] 读取加载模式配置失败（" + e.Message + "），使用 Addressables");
             }
 
-            return UiAssetMode.Addressables;
+            return UIAssetMode.Addressables;
         }
 
         /// <summary>
-        /// 启动框架：确保 UiRoot 与 EventSystem 存在并绑定加载器（幂等，重复调用返回已有实例）。
-        /// loader 为 null 时按 UiManager.AssetMode 选择：默认 Addressables（程序集缺失自动回退
+        /// 启动框架：确保 UIRoot 与 EventSystem 存在并绑定加载器（幂等，重复调用返回已有实例）。
+        /// loader 为 null 时按 UIManager.AssetMode 选择：默认 Addressables（程序集缺失自动回退
         /// Resources 并警告）；也可显式 Init(loader) 指定任意实现。
         /// 所有静态 API 需在 Init() 之后调用，否则抛出明确异常。
         /// </summary>
-        public static UiManager Init(IAssetLoader loader = null)
+        public static UIManager Init(IAssetLoader loader = null)
         {
             if (_instance != null)
             {
                 return _instance;
             }
 
-            UiRoot.EnsureCreated();
+            UIRoot.EnsureCreated();
             EnsureEventSystem(); // UI 点击交互的刚需：场景已有 EventSystem 则不重复创建
             var go = new GameObject("MyUI Manager");
-            var manager = go.AddComponent<UiManager>();
-            _instance = manager; // 注意：AddComponent 后立刻登记单例（UiManager 无 Awake，必须在此赋值）
+            var manager = go.AddComponent<UIManager>();
+            _instance = manager; // 注意：AddComponent 后立刻登记单例（UIManager 无 Awake，必须在此赋值）
             DontDestroyOnLoad(go);
             manager.Initialize(loader ?? CreateDefaultLoader());
             return manager;
@@ -116,7 +116,7 @@ namespace MyUI.Runtime
         /// <summary>按 AssetMode 创建默认加载器（默认 Addressables；程序集缺失自动回退 Resources 并警告）。</summary>
         private static IAssetLoader CreateDefaultLoader()
         {
-            if (AssetMode == UiAssetMode.Addressables)
+            if (AssetMode == UIAssetMode.Addressables)
             {
                 try
                 {
@@ -145,7 +145,7 @@ namespace MyUI.Runtime
         private void Initialize(IAssetLoader loader)
         {
             _loader = loader;
-            _core = new UiManagerCore(loader, this);
+            _core = new UIManagerCore(loader, this);
             _core.PanelOpened += args => PanelOpened?.Invoke(args.Record);
             _core.PanelClosed += args => PanelClosed?.Invoke(args.Record, args.Pooled);
             _core.PanelLoadFailed += args =>
@@ -164,9 +164,9 @@ namespace MyUI.Runtime
             }
         }
 
-        // ================= IUiPanelFactory =================
+        // ================= IUIPanelFactory =================
 
-        IUiPanelView IUiPanelFactory.AttachView(PanelRecord record, object viewInstance)
+        IUIPanelView IUIPanelFactory.AttachView(PanelRecord record, object viewInstance)
         {
             var go = viewInstance as GameObject;
             if (go == null)
@@ -174,15 +174,15 @@ namespace MyUI.Runtime
                 throw new ArgumentException("加载器返回的视图实例必须是 GameObject", nameof(viewInstance));
             }
 
-            var panel = go.GetComponent(record.PanelType) as UiPanel;
+            var panel = go.GetComponent(record.PanelType) as UIPanel;
             if (panel == null)
             {
-                panel = go.AddComponent(record.PanelType) as UiPanel;
+                panel = go.AddComponent(record.PanelType) as UIPanel;
             }
 
             if (panel == null)
             {
-                throw new InvalidOperationException("面板视图缺少 UiPanel 组件: " + record.PanelName);
+                throw new InvalidOperationException("面板视图缺少 UIPanel 组件: " + record.PanelName);
             }
 
             // Inspector 可视化配置优先于代码特性/默认值（加载后立即生效）
@@ -191,7 +191,7 @@ namespace MyUI.Runtime
             record.Poolable = panel.inspectorPoolable;
 
             // 按（可能被覆盖的）层级挂载到对应层 Canvas
-            RectTransform layerRoot = UiRoot.Instance != null ? UiRoot.Instance.GetLayerRoot(record.Layer) : null;
+            RectTransform layerRoot = UIRoot.Instance != null ? UIRoot.Instance.GetLayerRoot(record.Layer) : null;
             if (layerRoot != null)
             {
                 go.transform.SetParent(layerRoot, false);
@@ -204,42 +204,42 @@ namespace MyUI.Runtime
             return panel;
         }
 
-        void IUiPanelFactory.OnViewReady(IUiPanelView view, PanelRecord record)
+        void IUIPanelFactory.OnViewReady(IUIPanelView view, PanelRecord record)
         {
             // 视图就绪（新加载 / 池复用都经过这里）：Inspector 取消勾选「参与返回导航」→ 撤销本次入栈
-            if (view is UiPanel panel)
+            if (view is UIPanel panel)
             {
                 ConfirmOrUndoPendingStack(_core, panel.inspectorStackable);
             }
         }
 
-        void IUiPanelFactory.DestroyView(IUiPanelView view)
+        void IUIPanelFactory.DestroyView(IUIPanelView view)
         {
-            if (view is UiPanel panel && panel.gameObject != null && _loader != null)
+            if (view is UIPanel panel && panel.gameObject != null && _loader != null)
             {
                 _loader.ReleaseView(panel.gameObject);
             }
         }
 
-        void IUiPanelFactory.SetViewActive(IUiPanelView view, bool active)
+        void IUIPanelFactory.SetViewActive(IUIPanelView view, bool active)
         {
-            if (view is UiPanel panel && panel.gameObject != null)
+            if (view is UIPanel panel && panel.gameObject != null)
             {
                 panel.gameObject.SetActive(active);
             }
         }
 
-        void IUiPanelFactory.MoveToTop(IUiPanelView view)
+        void IUIPanelFactory.MoveToTop(IUIPanelView view)
         {
-            if (view is UiPanel panel && panel.transform != null)
+            if (view is UIPanel panel && panel.transform != null)
             {
                 panel.transform.SetAsLastSibling();
             }
         }
 
-        void IUiPanelFactory.RefreshViewContext(IUiPanelView view, PanelRecord record)
+        void IUIPanelFactory.RefreshViewContext(IUIPanelView view, PanelRecord record)
         {
-            if (view is UiPanel panel)
+            if (view is UIPanel panel)
             {
                 panel.SerialId = record.SerialId;
                 panel.PanelName = record.PanelName;
@@ -251,16 +251,16 @@ namespace MyUI.Runtime
         // ================= 静态门面 API =================
 
         /// <summary>
-        /// 打开面板（泛型版）。data 会原样传给 UiPanel.OnOpen。
+        /// 打开面板（泛型版）。data 会原样传给 UIPanel.OnOpen。
         /// onOpened / onFailed 只回调一次；单实例重复打开以现有实例聚焦回调。
-        /// 面板声明来自 [UiPanel] 特性（Layer / FullScreen / AllowMulti / Poolable / Address），
+        /// 面板声明来自 [UIPanel] 特性（Layer / FullScreen / AllowMulti / Poolable / Address），
         /// 未标注时按默认值（Normal 层、单实例、可入池）。
         /// </summary>
         public static void OpenPanel<T>(object data = null,
-            Action<UiPanel> onOpened = null, Action<string> onFailed = null) where T : UiPanel
+            Action<UIPanel> onOpened = null, Action<string> onFailed = null) where T : UIPanel
         {
-            UiManager instance = RequireInstance();
-            UiPanelAttribute attr = ResolveAttribute(typeof(T));
+            UIManager instance = RequireInstance();
+            UIPanelAttribute attr = ResolveAttribute(typeof(T));
             RememberCurrentTop(instance, attr.Stackable); // 自动记返回路径（飘字/过场 UI 标记 Stackable=false 不入栈）
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, null),
@@ -273,7 +273,7 @@ namespace MyUI.Runtime
                     }
                     else
                     {
-                        onOpened?.Invoke(view as UiPanel);
+                        onOpened?.Invoke(view as UIPanel);
                     }
                 });
         }
@@ -281,7 +281,7 @@ namespace MyUI.Runtime
         /// <summary>打开前自动把当前顶层面板记入导航栈（stackable=false 的面板不参与返回导航）。</summary>
         private static int _pendingStackSerial = -1;
 
-        private static void RememberCurrentTop(UiManager instance, bool stackable)
+        private static void RememberCurrentTop(UIManager instance, bool stackable)
         {
             _pendingStackSerial = -1;
             if (!stackable)
@@ -298,7 +298,7 @@ namespace MyUI.Runtime
         }
 
         /// <summary>AttachView 后调用：若 Inspector 取消勾选"参与返回导航"，撤销本次入栈。</summary>
-        private static void ConfirmOrUndoPendingStack(UiManagerCore core, bool inspectorStackable)
+        private static void ConfirmOrUndoPendingStack(UIManagerCore core, bool inspectorStackable)
         {
             if (inspectorStackable)
             {
@@ -318,10 +318,10 @@ namespace MyUI.Runtime
         /// 不被默认约定 "UIPanel/{TypeName}" 限制。其余语义同泛型版。
         /// </summary>
         public static void OpenPanel<T>(string address, object data = null,
-            Action<UiPanel> onOpened = null, Action<string> onFailed = null) where T : UiPanel
+            Action<UIPanel> onOpened = null, Action<string> onFailed = null) where T : UIPanel
         {
-            UiManager instance = RequireInstance();
-            UiPanelAttribute attr = ResolveAttribute(typeof(T));
+            UIManager instance = RequireInstance();
+            UIPanelAttribute attr = ResolveAttribute(typeof(T));
             RememberCurrentTop(instance, attr.Stackable); // 自动记返回路径（Stackable=false 不入栈）
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, address),
@@ -334,13 +334,13 @@ namespace MyUI.Runtime
                     }
                     else
                     {
-                        onOpened?.Invoke(view as UiPanel);
+                        onOpened?.Invoke(view as UIPanel);
                     }
                 });
         }
 
         /// <summary>地址解析优先级：显式地址 > 特性 Address > 加载器默认约定。</summary>
-        private static string ResolveAddress(Type panelType, UiPanelAttribute attr,
+        private static string ResolveAddress(Type panelType, UIPanelAttribute attr,
             IAssetLoader loader, string explicitAddress)
         {
             if (!string.IsNullOrEmpty(explicitAddress))
@@ -352,9 +352,9 @@ namespace MyUI.Runtime
         }
 
         /// <summary>打开面板的 Task 包装（回调版之上的语法糖；回调都发生在 Unity 主线程）。</summary>
-        public static Task<UiPanel> OpenPanelAsync<T>(object data = null) where T : UiPanel
+        public static Task<UIPanel> OpenPanelAsync<T>(object data = null) where T : UIPanel
         {
-            var tcs = new TaskCompletionSource<UiPanel>();
+            var tcs = new TaskCompletionSource<UIPanel>();
             OpenPanel<T>(data,
                 panel => tcs.TrySetResult(panel),
                 error => tcs.TrySetException(new InvalidOperationException("打开面板失败: " + error)));
@@ -362,7 +362,7 @@ namespace MyUI.Runtime
         }
 
         /// <summary>按实例关闭面板（走标准关闭流程，含延迟销毁与池化）。</summary>
-        public static void ClosePanel(UiPanel panel, bool immediate = false)
+        public static void ClosePanel(UIPanel panel, bool immediate = false)
         {
             if (panel == null)
             {
@@ -383,12 +383,12 @@ namespace MyUI.Runtime
         /// <summary>按面板名关闭（多实例时关闭最新打开的一个）。</summary>
         public static void ClosePanel(string panelName, bool immediate = false)
         {
-            UiManager instance = RequireInstance();
+            UIManager instance = RequireInstance();
             instance._core.ClosePanelByName(panelName, immediate);
         }
 
         /// <summary>按类型关闭面板（单实例语义；多实例时关闭最新打开的一个）。</summary>
-        public static void ClosePanel<T>(bool immediate = false) where T : UiPanel
+        public static void ClosePanel<T>(bool immediate = false) where T : UIPanel
         {
             ClosePanel(typeof(T).Name, immediate);
         }
@@ -405,18 +405,18 @@ namespace MyUI.Runtime
         }
 
         /// <summary>取已打开面板（单实例语义；未打开返回 null）。</summary>
-        public static UiPanel GetPanel<T>() where T : UiPanel
+        public static UIPanel GetPanel<T>() where T : UIPanel
         {
             if (_instance == null)
             {
                 return null;
             }
 
-            return _instance._core.GetRecord(typeof(T).Name)?.View as UiPanel;
+            return _instance._core.GetRecord(typeof(T).Name)?.View as UIPanel;
         }
 
         /// <summary>某类型面板是否已打开。</summary>
-        public static bool IsOpen<T>() where T : UiPanel
+        public static bool IsOpen<T>() where T : UIPanel
         {
             if (_instance == null)
             {
@@ -429,7 +429,7 @@ namespace MyUI.Runtime
         /// <summary>把当前顶层面板压入导航栈（返回式导航用）。</summary>
         public static void Push()
         {
-            UiManager instance = RequireInstance();
+            UIManager instance = RequireInstance();
             int top = instance._core.GetTopOpenSerialId();
             if (top >= 0)
             {
@@ -463,7 +463,7 @@ namespace MyUI.Runtime
             }
         }
 
-        /// <summary>由工厂注入（UiPanel.Close 转发到这里），内部用。</summary>
+        /// <summary>由工厂注入（UIPanel.Close 转发到这里），内部用。</summary>
         internal void ClosePanel(int serialId, bool immediate)
         {
             if (_core != null)
@@ -474,26 +474,26 @@ namespace MyUI.Runtime
 
         // ================= 内部 =================
 
-        private static UiManager RequireInstance()
+        private static UIManager RequireInstance()
         {
             if (_instance == null)
             {
                 throw new InvalidOperationException(
-                    "MyUI 未启动：请先调用 UiManager.Init()（入口处一行即可，加载模式按窗口①配置/AssetMode）。");
+                    "MyUI 未启动：请先调用 UIManager.Init()（入口处一行即可，加载模式按窗口①配置/AssetMode）。");
             }
 
             return _instance;
         }
 
-        /// <summary>解析 [UiPanel] 特性；未标注返回默认值。</summary>
-        private static UiPanelAttribute ResolveAttribute(Type panelType)
+        /// <summary>解析 [UIPanel] 特性；未标注返回默认值。</summary>
+        private static UIPanelAttribute ResolveAttribute(Type panelType)
         {
-            if (!AttrCache.TryGetValue(panelType, out UiPanelAttribute attr))
+            if (!AttrCache.TryGetValue(panelType, out UIPanelAttribute attr))
             {
-                attr = (UiPanelAttribute)Attribute.GetCustomAttribute(panelType, typeof(UiPanelAttribute));
+                attr = (UIPanelAttribute)Attribute.GetCustomAttribute(panelType, typeof(UIPanelAttribute));
                 if (attr == null)
                 {
-                    attr = new UiPanelAttribute();
+                    attr = new UIPanelAttribute();
                 }
 
                 AttrCache[panelType] = attr;

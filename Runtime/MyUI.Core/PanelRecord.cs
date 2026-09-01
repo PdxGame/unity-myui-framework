@@ -5,12 +5,12 @@ namespace MyUI.Core
 {
     /// <summary>
     /// 面板实例的运行时记录（纯数据，不持有任何 Unity 类型；GameFramework UIFormInfo 思路）。
-    /// 由 UiManagerCore 分配并维护，其状态字段仅 Core 内部可写。
+    /// 由 UIManagerCore 分配并维护，其状态字段仅 Core 内部可写。
     /// </summary>
     public sealed class PanelRecord
     {
         public PanelRecord(int serialId, Type panelType, string panelName, string address,
-            UiLayer layer, bool fullScreen, bool allowMulti, bool poolable, object userData)
+            UILayer layer, bool fullScreen, bool allowMulti, bool poolable, object userData)
         {
             SerialId = serialId;
             PanelType = panelType;
@@ -26,17 +26,17 @@ namespace MyUI.Core
         /// <summary>实例唯一标识（全局自增；GameFramework serialId 思路，可定向关闭某个实例）。</summary>
         public int SerialId { get; }
 
-        /// <summary>面板视图类型（Runtime 侧为 UiPanel 子类）。</summary>
+        /// <summary>面板视图类型（Runtime 侧为 UIPanel 子类）。</summary>
         public Type PanelType { get; }
 
         /// <summary>面板名（默认 = 类型名，也是资源默认地址的一部分）。</summary>
         public string PanelName { get; }
 
-        /// <summary>资源地址（默认约定 "UIPanel/{PanelName}"，可被 UiPanelAttribute.Address 覆盖）。</summary>
+        /// <summary>资源地址（默认约定 "UIPanel/{PanelName}"，可被 UIPanelAttribute.Address 覆盖）。</summary>
         public string Address { get; }
 
         /// <summary>所属层级（构造时按特性/参数注入；AttachView 后可按 Inspector 配置覆盖）。</summary>
-        public UiLayer Layer { get; internal set; }
+        public UILayer Layer { get; internal set; }
 
         /// <summary>是否全屏：作为遮挡链顶端时会让其下方的面板进入暂停态（可被 Inspector 配置覆盖）。</summary>
         public bool FullScreen { get; internal set; }
@@ -61,8 +61,8 @@ namespace MyUI.Core
         /// <summary>当前是否暂停（被全屏遮挡链覆盖）。</summary>
         public bool Paused { get; internal set; }
 
-        /// <summary>生命周期视图（Runtime 侧即 UiPanel 组件；Core 只通过 IUiPanelView 驱动它）。</summary>
-        public IUiPanelView View { get; internal set; }
+        /// <summary>生命周期视图（Runtime 侧即 UIPanel 组件；Core 只通过 IUIPanelView 驱动它）。</summary>
+        public IUIPanelView View { get; internal set; }
 
         /// <summary>打开请求的完成回调列表（加载中重复打开会合并进此列表，全部一次性回调）。</summary>
         internal List<Action<object, string>> OpenCallbacks { get; set; } = new List<Action<object, string>>();
