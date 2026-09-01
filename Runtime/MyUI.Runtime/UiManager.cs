@@ -34,6 +34,12 @@ namespace MyUI.Runtime
         public event Action<PanelRecord, bool> PanelClosed; // (record, pooled)
         public event Action<string, string> PanelLoadFailed; // (panelName, error)
 
+        /// <summary>
+        /// 框架启动完成事件（Bootstrap 首次完成后触发一次）。
+        /// 用于"在框架就绪后再执行打开等操作"，避免与 AutoBoot 的先后顺序产生竞态。
+        /// </summary>
+        public static event Action Started;
+
         /// <summary>资源加载方式开关。默认值来自 MyUI 窗口配置（MyUI → Settings & Registration），
         /// 缺配置时按 Addressables；代码仍可随时覆盖本属性。</summary>
         public static UiAssetMode AssetMode { get; set; } = ResolveDefaultMode();
@@ -97,6 +103,7 @@ namespace MyUI.Runtime
             _instance = manager; // 注意：AddComponent 后立刻登记单例（UiManager 无 Awake，必须在此赋值）
             DontDestroyOnLoad(go);
             manager.Init(loader ?? CreateDefaultLoader());
+            Started?.Invoke(); // 就绪通知（订阅方可在此时安全调用 OpenPanel）
             return manager;
         }
 

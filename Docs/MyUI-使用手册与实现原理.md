@@ -252,6 +252,7 @@ UiManager.IsOpen<T>();
 UiManager.Back();             // 有历史才关当前页
 
 // ---- 事件 ----
+UiManager.Started           += () => { };      // 框架启动完成（可在此时安全打开面板，与 AutoBoot 顺序无关）
 UiManager.Instance.PanelOpened     += r => { };             // (PanelRecord)
 UiManager.Instance.PanelClosed     += (r, pooled) => { };   // (PanelRecord, bool)
 UiManager.Instance.PanelLoadFailed += (name, error) => { };
