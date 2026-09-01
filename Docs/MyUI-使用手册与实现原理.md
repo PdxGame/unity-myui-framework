@@ -291,6 +291,20 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 
 组内可为面板添加标签（如 `ui`、`panel`）用于批量构建设置，非必需。
 
+#### Resources 模式（不使用 Addressables）
+
+不引入 Addressables 时，框架以 Resources 兼容模式运行，使用成本与约定目录方案一致：
+
+- **触发方式**（任一即可）：
+  1. 项目不安装 Addressables 包 —— `Bootstrap()` 自动回退并打印一次警告；
+  2. 已安装但用代码指定：`UiManager.AssetMode = UiAssetMode.Resources;`（启动前设置）；
+  3. `UiManager.Bootstrap(new ResourcesPanelLoader());`（显式传入）。
+- **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`），地址仍 = 类型名；
+- **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("类型名")` 同步加载（无需组、无需注册、无需配置资产）；
+- **注意事项**：Resources 目录内容会全部打入安装包（无法按需/分包/远程），同步加载适合原型与小项目；示例 Demo 即此模式。
+
+两种模式可共存：面板地址约定相同（类型名），切换加载器后资源位置对应调整即可。
+
 ### 12. 调试工具
 
 - **UiPanelTester**：场景中任意 GameObject 挂该组件，填面板类型全名（如 `MyUI.Examples.MainMenuPanel`），Play 中一键打开；
