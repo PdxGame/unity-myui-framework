@@ -264,6 +264,33 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 - **自定义**：实现 `IAssetLoader`（`LoadViewAsync` / `ReleaseView` / `DefaultAddress`），`Bootstrap(myLoader)` 传入；
 - **面板注册**（Addressables 模式）：`Assets/MyUI/Panels/` 下带 UiPanel 组件的预制体，菜单 `MyUI → Panels → Add to Addressables` 一键入库（地址=类型名，幂等）；或在 Groups 窗口手动标注。
 
+#### Addressables 组与命名规范
+
+**组（Group）**
+
+- 面板统一放入名为 **`UIPanels`** 的专用组（注册菜单默认写入该组；手工建组时取同名）；
+- 不要将面板放入 `Built In Data`（内建数据组，用于场景列表等内建资源）与 `Default Local Group`（默认空组）之外的无关分组，避免打包/检索混乱；
+- 同一组内可共享打包设置（如同时打 AssetBundle 或不打）。
+
+**地址（Address）**
+
+- **地址 = 面板类型名**（如 `ShopPanel`）。框架默认地址约定（`DefaultAddress`）即类型名；
+- 地址与类名不一致会导致加载失败：Console 报 `InvalidKeyException: No Location found for Key=...`；
+- 例外：确需自定义地址时，用 `[UiPanel(Address = "...")]`（该面板固定用）或 `OpenPanel<T>("地址")`（仅本次调用）。
+
+**命名三统一**（强烈建议）
+
+```
+类型名 == 预制体文件名 == Addressables 地址
+示例：ShopPanel.cs / ShopPanel.prefab / 地址 ShopPanel
+```
+
+三统一时 `OpenPanel<T>()` 无需任何额外参数、零配置；破坏任一环都会造成加载失败或额外传址。
+
+**标签**（可选）
+
+组内可为面板添加标签（如 `ui`、`panel`）用于批量构建设置，非必需。
+
 ### 12. 调试工具
 
 - **UiPanelTester**：场景中任意 GameObject 挂该组件，填面板类型全名（如 `MyUI.Examples.MainMenuPanel`），Play 中一键打开；
@@ -286,6 +313,7 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 3. **面板根布局**：根节点使用 RectTransform（框架会自动修复普通 Transform，但排版基准以根为准）。
 4. **TMP Essentials 提示**：新项目若提示导入 TMP 基础资源，执行 `Window → TextMeshPro → Import TMP Essential Resources`。
 5. **包更新**：git 安装方式下，Package Manager 中该包显示为远程源，重新拉取/切换版本在 Package Manager 中进行；开发调试可改用 embedded（拷贝包目录至项目 `Packages/` 下）。
+6. **`InvalidKeyException: No Location found for Key=...`**：Addressables 找不到该地址——检查面板的地址是否等于类型名（三统一，见 §11），是否已入组（`UIPanels`），以及是否忘了执行注册。
 
 ---
 
