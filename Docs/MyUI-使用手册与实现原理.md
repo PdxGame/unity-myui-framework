@@ -35,13 +35,13 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 ### 2. 快速开始
 
-安装完成即可使用，无需任何启动代码（框架自动初始化，并自动创建 EventSystem——按钮点击依赖，场景已有则不重复）：
+入口处调用一次 `UiManager.Init()`（唯一启动方式，幂等），随后全局可用（Init 会自动创建 UI 根与 EventSystem、按窗口①配置绑定加载器）：
 
 ```csharp
 using MyUI.Runtime;
 
-// 打开面板（地址默认 = 类型名，无需显式指定）
-UiManager.OpenPanel<MainMenuPanel>();
+UiManager.Init();                           // 启动框架（入口一次）
+UiManager.OpenPanel<MainMenuPanel>();       // 打开面板（地址默认 = 类型名）
 
 // 关闭（面板内部）
 this.Close();                 // 等价于 Close()
@@ -226,10 +226,10 @@ public sealed class TradePanel : UiPanel { }
 ### 10. API 参考
 
 ```csharp
-// ---- 启动（默认全自动，以下均为可选覆盖接口）----
-UiManager.AutoBoot                          // 属性，默认 true（运行时自动启动）；false 则手动启动
-UiManager.Bootstrap(IAssetLoader loader = null)  // 手动启动；loader 可指定自定义加载器
-UiManager.AssetMode                         // Addressables（默认）/ Resources（可由窗口①配置）
+// ---- 启动（唯一入口：Init，幂等）----
+UiManager.Init();                                   // 启动框架（入口一次；按窗口①配置绑定加载器）
+UiManager.Init(IAssetLoader loader);                // 自定义加载器启动
+UiManager.AssetMode                                 // Addressables（默认）/ Resources（窗口①或代码均可）
 
 // ---- 打开 ----
 UiManager.OpenPanel<T>(object data = null,
@@ -252,7 +252,6 @@ UiManager.IsOpen<T>();
 UiManager.Back();             // 有历史才关当前页
 
 // ---- 事件 ----
-UiManager.Started           += () => { };      // 框架启动完成（可在此时安全打开面板，与 AutoBoot 顺序无关）
 UiManager.Instance.PanelOpened     += r => { };             // (PanelRecord)
 UiManager.Instance.PanelClosed     += (r, pooled) => { };   // (PanelRecord, bool)
 UiManager.Instance.PanelLoadFailed += (name, error) => { };
@@ -261,9 +260,9 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 ### 11. 资源加载
 
 - **加载模式**：菜单 `MyUI → Settings & Registration` ①区勾选 Addressables（默认）/ Resources → 保存即应用（自动重编译，秒级）；也可代码指定 `UiManager.AssetMode`；
-- **默认 Addressables**：`Bootstrap()` 自动选用 `AddressablesPanelLoader`（程序集缺失时回退 Resources 并打警告）；
+- **默认 Addressables**：`Init()` 自动选用 `AddressablesPanelLoader`（程序集缺失时回退 Resources 并打警告）；
 - **回退**：`ResourcesPanelLoader`（地址 = 类型名 + `UIPanel/` 前缀，预制体放任意 `Resources/` 目录）；
-- **自定义**：实现 `IAssetLoader`（`LoadViewAsync` / `ReleaseView` / `DefaultAddress`），`Bootstrap(myLoader)` 传入；
+- **自定义**：实现 `IAssetLoader`（`LoadViewAsync` / `ReleaseView` / `DefaultAddress`），`Init(myLoader)` 传入；
 - **面板注册**：菜单 `MyUI → Settings & Registration` ②区：选目录（或单片拖入）→ 自动建组（组名可填，默认 `UIPanels`）→ 自动入组、地址自动=类型名、重复跳过（见下文规范）。
 
 #### Addressables 组与命名规范
@@ -299,9 +298,9 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 
 - **触发方式**（任一即可）：
   1. 窗口勾选：`MyUI → Settings & Registration` ①区选「Resources」→ 保存并应用（推荐）；
-  2. 项目不安装 Addressables 包 —— `Bootstrap()` 自动回退并打印一次警告；
-  3. 已安装但用代码指定：`UiManager.AssetMode = UiAssetMode.Resources;`（启动前设置）；
-  4. `UiManager.Bootstrap(new ResourcesPanelLoader());`（显式传入）。
+  2. 项目不安装 Addressables 包 —— `Init()` 自动回退并打印一次警告；
+  3. 已安装但用代码指定：`UiManager.AssetMode = UiAssetMode.Resources;`（Init 前设置）；
+  4. `UiManager.Init(new ResourcesPanelLoader());`（显式传入）。
 - **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`）；约定子目录 `UIPanel/` 与其对齐（地址 `UIPanel/{类型名}`）；
 - **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("类型名")` 同步加载（无需组、无需注册、无需配置资产）；
 - **注意事项**：Resources 目录内容会全部打入安装包（无法按需/分包/远程），同步加载适合原型与小项目；示例 Demo 即此模式。

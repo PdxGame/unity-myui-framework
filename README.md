@@ -24,8 +24,8 @@ https://github.com/PdxGame/unity-myui-framework.git
 2. 导入完成后 **新建一个空场景**（File → New Scene → Basic，保存）；
 3. 点 **Play**：自动弹出主菜单 → 开始游戏 → 返回 → 设置 → 关闭 → 退出。
 
-> 框架本身**无需任何启动代码**：AutoBoot 自动启动框架、自动创建 EventSystem、加载模式自动按窗口配置。
-> Sample 附带一个 Demo 启动器（`RuntimeInitializeOnLoadMethod`）——它只是**示例入口**（负责演示打开主菜单），正式项目不需要它，也没有任何需要照抄的启动样板。
+> 启动 = 入口处一行 `UiManager.Init()`（唯一启动方式，幂等；流程：创建 UI 根、自动创建 EventSystem、绑定加载器）。
+> Sample 附带的 Demo 启动器（`RuntimeInitializeOnLoadMethod`）只是**示例入口**（负责演示打开主菜单），正式项目在自己入口调用 Init() 即可。
 > Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/UIPanel/` 子目录，地址 = `UIPanel/{类型名}`），克隆即跑零配置。
 > Demo 文案为英文，使用 TMP 默认字体（LiberationSans SDF）——若编辑器提示导入 TMP Essentials，执行 `Window → TextMeshPro → Import TMP Essential Resources`（TMP 标准流程一次即可）。
 
@@ -47,13 +47,14 @@ https://github.com/PdxGame/unity-myui-framework.git
 ```csharp
 using MyUI.Runtime;
 
+UiManager.Init();                       // 启动一次（入口处；幂等）
 UiManager.OpenPanel<MyPagePanel>(数据);  // 打开（返回路径自动记录）
 panel.Close();                           // 关闭
 UiManager.Back();                        // 返回（有历史时才关当前页）
 UiManager.CloseAll();                    // 清场
 ```
 
-框架启动全自动（`AutoBoot`，可关）；默认加载模式由窗口①配置（缺配置=Addressables）。
+加载模式由窗口①配置（`MyUI → Settings & Registration`，缺配置=Addressables）；`UiManager.AssetMode` 可代码覆盖；`Init(loader)` 可传入自定义加载器。
 
 ## 目录结构
 

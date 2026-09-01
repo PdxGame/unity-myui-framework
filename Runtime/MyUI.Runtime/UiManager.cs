@@ -9,12 +9,10 @@ namespace MyUI.Runtime
 {
     /// <summary>
     /// UI 运行时门面（GameFramework UIComponent / QFramework UIKit 的对应物）。
-    /// 使用方式：入口处调用一次 UiManager.Bootstrap(loader)，之后用静态 API：
+    /// 使用方式：入口处调用一次 UiManager.Init()，之后用静态 API：
     ///   UiManager.OpenPanel&lt;SettingsPanel&gt;(data, onOpened, onFailed);
     /// 本类同时实现 IUiPanelFactory：把加载完成的视图挂到层 Canvas、注册运行时字段并执行激活/销毁。
-    /// 框架不强制任何加载器 —— 默认 ResourcesPanelLoader（框架自带），
-    /// Addressables 版（MyUI.Loaders.Addressables 程序集）在 Bootstrap 时选择即可。
-    /// 注意：所有静态 API 需在 Bootstrap 之后调用，否则抛出明确异常。
+    /// 启动时机是显式的：忘记 Init 时静态 API 会抛出明确异常提示先调用 Init。
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class UiManager : MonoBehaviour, IUiPanelFactory
@@ -33,12 +31,6 @@ namespace MyUI.Runtime
         public event Action<PanelRecord> PanelOpened;
         public event Action<PanelRecord, bool> PanelClosed; // (record, pooled)
         public event Action<string, string> PanelLoadFailed; // (panelName, error)
-
-        /// <summary>
-        /// 框架启动完成事件（Bootstrap 首次完成后触发一次）。
-        /// 用于"在框架就绪后再执行打开等操作"，避免与 AutoBoot 的先后顺序产生竞态。
-        /// </summary>
-        public static event Action Started;
 
         /// <summary>资源加载方式开关。默认值来自 MyUI 窗口配置（MyUI → Settings & Registration），
         /// 缺配置时按 Addressables；代码仍可随时覆盖本属性。</summary>
@@ -69,27 +61,12 @@ namespace MyUI.Runtime
         }
 
         /// <summary>
-        /// 是否自动启动框架（默认 true：游戏运行时自动 Bootstrap，无需写任何启动代码）。
-        /// 想完全手动控制启动时机时设为 false，再自己调用 Bootstrap()。
-        /// </summary>
-        public static bool AutoBoot { get; set; } = true;
-
-        /// <summary>游戏运行时自动启动框架（手动 Bootstrap 会被幂等跳过）。</summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void AutoBootstrap()
-        {
-            if (AutoBoot && _instance == null)
-            {
-                Bootstrap();
-            }
-        }
-
-        /// <summary>
-        /// 启动框架：确保 UiRoot 存在并绑定加载器。
+        /// 启动框架：确保 UiRoot 与 EventSystem 存在并绑定加载器（幂等，重复调用返回已有实例）。
         /// loader 为 null 时按 UiManager.AssetMode 选择：默认 Addressables（程序集缺失自动回退
-        /// Resources 并警告）；也可显式 Bootstrap(loader) 指定任意实现。
+        /// Resources 并警告）；也可显式 Init(loader) 指定任意实现。
+        /// 所有静态 API 需在 Init() 之后调用，否则抛出明确异常。
         /// </summary>
-        public static UiManager Bootstrap(IAssetLoader loader = null)
+        public static UiManager Init(IAssetLoader loader = null)
         {
             if (_instance != null)
             {
@@ -102,8 +79,7 @@ namespace MyUI.Runtime
             var manager = go.AddComponent<UiManager>();
             _instance = manager; // 注意：AddComponent 后立刻登记单例（UiManager 无 Awake，必须在此赋值）
             DontDestroyOnLoad(go);
-            manager.Init(loader ?? CreateDefaultLoader());
-            Started?.Invoke(); // 就绪通知（订阅方可在此时安全调用 OpenPanel）
+            manager.Initialize(loader ?? CreateDefaultLoader());
             return manager;
         }
 
@@ -166,7 +142,7 @@ namespace MyUI.Runtime
             return new ResourcesPanelLoader();
         }
 
-        private void Init(IAssetLoader loader)
+        private void Initialize(IAssetLoader loader)
         {
             _loader = loader;
             _core = new UiManagerCore(loader, this);
@@ -503,7 +479,7 @@ namespace MyUI.Runtime
             if (_instance == null)
             {
                 throw new InvalidOperationException(
-                    "MyUI 未启动：请在入口处先调用 UiManager.Bootstrap(loader)（loader 可省略，默认按配置 Addressables/Resources；运行时通常由 AutoBoot 自动启动）。");
+                    "MyUI 未启动：请先调用 UiManager.Init()（入口处一行即可，加载模式按窗口①配置/AssetMode）。");
             }
 
             return _instance;
