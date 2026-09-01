@@ -149,6 +149,12 @@ namespace MyUI.Editor
                 RegisterFolder();
             }
 
+            EditorGUILayout.LabelField("— 或批量注册（先在 Project 窗口多选几个预制体） —", EditorStyles.centeredGreyMiniLabel);
+            if (GUILayout.Button("注册 Project 中选中的面板（可多选）", GUILayout.Height(24)))
+            {
+                RegisterSelection();
+            }
+
             EditorGUILayout.LabelField("— 或单片注册 —", EditorStyles.centeredGreyMiniLabel);
             EditorGUILayout.BeginHorizontal();
             _singlePrefab = (GameObject)EditorGUILayout.ObjectField("预制体", _singlePrefab, typeof(GameObject), false);
@@ -187,29 +193,47 @@ namespace MyUI.Editor
                 return;
             }
 
-            int ok = 0;
-            int skip = 0;
+            AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (settings == null)
+            {
+                LogLine("Addressables 未初始化，无法注册");
+                return;
+            }
+
+            TryDisableIncludeFlags(settings); // 先关闭自动收编，避免 Resources 目录面板被伪组占用
+
+            int added = 0;
+            int repeat = 0;
+            int notPanel = 0;
+            int failed = 0;
             foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { _folder }))
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 if (prefab == null || prefab.GetComponentInChildren<UiPanel>(true) == null)
                 {
-                    skip++;
+                    notPanel++;
+                    LogLine("跳过（非面板）：" + path);
                     continue;
                 }
 
-                if (RegisterEntry(guid, prefab))
+                string reason;
+                if (RegisterEntry(guid, prefab, out reason))
                 {
-                    ok++;
+                    added++;
+                }
+                else if (reason == "repeat")
+                {
+                    repeat++;
                 }
                 else
                 {
-                    skip++;
+                    failed++;
+                    LogLine("注册失败（" + path + "）：" + reason);
                 }
             }
 
-            LogLine("目录注册完成：新增 " + ok + " 个，跳过 " + skip + " 个（非面板或重复）");
+            LogLine(string.Format("目录注册完成：新增 {0}，重复 {1}，非面板 {2}，失败 {3}", added, repeat, notPanel, failed));
         }
 
         private void RegisterSingle(GameObject prefab)
@@ -234,17 +258,65 @@ namespace MyUI.Editor
             }
 
             string guid = AssetDatabase.AssetPathToGUID(path);
-            RegisterEntry(guid, prefab);
+            string reason;
+            if (RegisterEntry(guid, prefab, out reason))
+            {
+                LogLine("已注册：" + prefab.name + "（组 " + _groupName + "）");
+            }
+            else
+            {
+                LogLine(reason == "repeat" ? "已存在，跳过：" + prefab.name : "注册失败（" + prefab.name + "）：" + reason);
+            }
         }
 
-        private bool RegisterEntry(string guid, GameObject prefab)
+        /// <summary>注册 Project 窗口中当前选中的多个面板预制体（多选）。</summary>
+        private void RegisterSelection()
         {
+            int total = 0;
+            foreach (Object obj in Selection.objects)
+            {
+                string path = AssetDatabase.GetAssetPath(obj);
+                if (string.IsNullOrEmpty(path) || !path.EndsWith(".prefab"))
+                {
+                    continue;
+                }
+
+                var prefab = obj as GameObject;
+                if (prefab == null || prefab.GetComponentInChildren<UiPanel>(true) == null)
+                {
+                    LogLine("跳过（非面板）：" + path);
+                    continue;
+                }
+
+                string guid = AssetDatabase.AssetPathToGUID(path);
+                string reason;
+                if (RegisterEntry(guid, prefab, out reason))
+                {
+                    LogLine("已注册：" + prefab.name + "（组 " + _groupName + "）");
+                    total++;
+                }
+                else if (reason == "repeat")
+                {
+                    LogLine("已存在，跳过：" + prefab.name);
+                }
+                else
+                {
+                    LogLine("注册失败（" + prefab.name + "）：" + reason);
+                }
+            }
+
+            LogLine("选中注册完成：新增 " + total + " 个（跳过已在组内或非面板的）");
+        }
+
+        private bool RegisterEntry(string guid, GameObject prefab, out string reason)
+        {
+            reason = null;
             try
             {
                 AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
                 if (settings == null)
                 {
-                    LogLine("Addressables 未初始化，无法注册");
+                    reason = "Addressables 未初始化";
                     return false;
                 }
 
@@ -252,15 +324,21 @@ namespace MyUI.Editor
                 AddressableAssetGroup group = settings.FindGroup(_groupName);
                 if (group == null)
                 {
-                    group = settings.CreateGroup(_groupName, false, false, false, settings.DefaultGroup.Schemas, null);
-                    LogLine("已自动创建组：" + _groupName);
+                    group = settings.CreateGroup(_groupName, false, false, false,
+                        settings.DefaultGroup != null ? settings.DefaultGroup.Schemas : null, null);
+                }
+
+                if (group == null)
+                {
+                    reason = "组创建失败：" + _groupName;
+                    return false;
                 }
 
                 foreach (AddressableAssetEntry e in group.entries)
                 {
                     if (e != null && e.address == typeName)
                     {
-                        LogLine("已存在，跳过：" + typeName);
+                        reason = "repeat";
                         return false;
                     }
                 }
@@ -268,20 +346,19 @@ namespace MyUI.Editor
                 AddressableAssetEntry entry = settings.CreateOrMoveEntry(guid, group);
                 if (entry == null)
                 {
-                    LogLine("CreateOrMoveEntry 失败：" + typeName);
+                    reason = "CreateOrMoveEntry 返回空（可能该资产正被 Resources 收编等特殊条目占用）";
                     return false;
                 }
 
                 entry.address = typeName;
                 settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, null, true, true);
                 AssetDatabase.SaveAssets();
-                TryDisableIncludeFlags(settings);
-                LogLine("已注册：" + typeName + "（组 " + _groupName + "）");
+                TryDisableIncludeFlags(settings); // 注册成功顺带关闭收编，避免后续被伪组占用
                 return true;
             }
             catch (Exception e)
             {
-                LogLine("注册失败：" + e.Message);
+                reason = e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace;
                 return false;
             }
         }
