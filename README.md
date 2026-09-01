@@ -25,15 +25,22 @@ https://github.com/PdxGame/unity-myui-framework.git
 3. 点 **Play**：自动弹出主菜单 → 开始游戏 → 返回 → 设置 → 关闭 → 退出。
 
 > Demo 启动器是静态自举的（`RuntimeInitializeOnLoadMethod`）：不需要场景对象、不需要相机。
-> Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/` 子目录，地址=类型名），克隆即跑零配置。
+> Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/UIPanel/` 子目录，地址 = `UIPanel/{类型名}`），克隆即跑零配置。
 > Demo 文案为英文，使用 TMP 默认字体（LiberationSans SDF）——若编辑器提示导入 TMP Essentials，执行 `Window → TextMeshPro → Import TMP Essential Resources`（TMP 标准流程一次即可）。
+
+## 编辑器菜单（MyUI）
+
+菜单 **`MyUI → Settings & Registration`** 打开管理窗口：
+
+- **① 加载模式**：勾选 Addressables（默认）/ Resources → 「保存并应用模式」即生效（自动重编译，秒级），无需改任何源码；
+- **② Addressables 面板注册**：选一个目录（或单片拖入预制体）→ 组名可填（默认 `UIPanels`，不存在自动创建）→ 自动入组、**地址自动 = 类型名**、重复自动跳过。
 
 ## 做一个新页面（5 步）
 
 1. 写一个类继承 `UiPanel`（配置在 `[UiPanel(...)]` 特性或预制体 Inspector 的 UiPanel 组件上选：层级/全屏/池化/入栈）；
 2. Unity 里搭同名预制体，根节点挂上这个类；
 3. 放进你自己定的目录；
-4. 生产（Addressables）：在 Groups 窗口标注入组，**地址=类型名**（或 `MyUI → Panels → Add to Addressables` 自动注册，幂等）；
+4. 生产（Addressables）：菜单 `MyUI → Settings & Registration` → ②区选该目录（或拖入预制体）→「注册」；地址自动=类型名；
 5. 代码里：
 
 ```csharp
@@ -45,7 +52,7 @@ UiManager.Back();                        // 返回（有历史时才关当前页
 UiManager.CloseAll();                    // 清场
 ```
 
-框架启动全自动（`AutoBoot`，可关）。
+框架启动全自动（`AutoBoot`，可关）；默认加载模式由窗口①配置（缺配置=Addressables）。
 
 ## 目录结构
 

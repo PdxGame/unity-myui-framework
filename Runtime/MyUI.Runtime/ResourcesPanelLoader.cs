@@ -34,7 +34,8 @@ namespace MyUI.Runtime
 
         public string DefaultAddress(Type panelType)
         {
-            return panelType.Name;
+            // 约定目录：Resources/UIPanel/{类型名}.prefab；地址 = UIPanel/{类型名}
+            return "UIPanel/" + panelType.Name;
         }
     }
 }

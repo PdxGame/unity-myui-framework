@@ -83,8 +83,8 @@ public sealed class ShopPanel : UiPanel
 
 **第 3 步：根节点挂脚本**：把 `ShopPanel` 组件挂到预制体根节点。
 
-**第 4 步（Addressables 模式）**：在 Addressables Groups 窗口把预制体加入任意组，**地址填类型名**（`ShopPanel`）；或放入 `Assets/MyUI/Panels/` 后执行菜单 `MyUI → Panels → Add to Addressables`（自动按类型名注册，幂等）。
-（Resources 兼容模式：预制体放入任意 `Resources/` 目录即可，地址同样等于类型名。）
+**第 4 步（Addressables 模式）**：打开菜单 **`MyUI → Settings & Registration`** → ②区「选择目录…」选中面板所在目录（或直接拖入预制体单片）→ 组名可填（默认 `UIPanels`，不存在自动创建）→ 点注册：自动入组、**地址自动 = 类型名**、重复自动跳过。
+（Resources 兼容模式：预制体放入任意 `Resources/` 目录即可，推荐 `Resources/UIPanel/` 子目录，地址自动 = `UIPanel/{类型名}`，无需注册。）
 
 **第 5 步：打开**：
 
@@ -259,10 +259,11 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 
 ### 11. 资源加载
 
+- **加载模式**：菜单 `MyUI → Settings & Registration` ①区勾选 Addressables（默认）/ Resources → 保存即应用（自动重编译，秒级）；也可代码指定 `UiManager.AssetMode`；
 - **默认 Addressables**：`Bootstrap()` 自动选用 `AddressablesPanelLoader`（程序集缺失时回退 Resources 并打警告）；
-- **回退**：`ResourcesPanelLoader`（地址 = 类型名，预制体放任意 `Resources/` 目录）；
+- **回退**：`ResourcesPanelLoader`（地址 = 类型名 + `UIPanel/` 前缀，预制体放任意 `Resources/` 目录）；
 - **自定义**：实现 `IAssetLoader`（`LoadViewAsync` / `ReleaseView` / `DefaultAddress`），`Bootstrap(myLoader)` 传入；
-- **面板注册**（Addressables 模式）：`Assets/MyUI/Panels/` 下带 UiPanel 组件的预制体，菜单 `MyUI → Panels → Add to Addressables` 一键入库（地址=类型名，幂等）；或在 Groups 窗口手动标注。
+- **面板注册**：菜单 `MyUI → Settings & Registration` ②区：选目录（或单片拖入）→ 自动建组（组名可填，默认 `UIPanels`）→ 自动入组、地址自动=类型名、重复跳过（见下文规范）。
 
 #### Addressables 组与命名规范
 
@@ -296,10 +297,11 @@ UiManager.Instance.PanelLoadFailed += (name, error) => { };
 不引入 Addressables 时，框架以 Resources 兼容模式运行，使用成本与约定目录方案一致：
 
 - **触发方式**（任一即可）：
-  1. 项目不安装 Addressables 包 —— `Bootstrap()` 自动回退并打印一次警告；
-  2. 已安装但用代码指定：`UiManager.AssetMode = UiAssetMode.Resources;`（启动前设置）；
-  3. `UiManager.Bootstrap(new ResourcesPanelLoader());`（显式传入）。
-- **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`），地址仍 = 类型名；
+  1. 窗口勾选：`MyUI → Settings & Registration` ①区选「Resources」→ 保存并应用（推荐）；
+  2. 项目不安装 Addressables 包 —— `Bootstrap()` 自动回退并打印一次警告；
+  3. 已安装但用代码指定：`UiManager.AssetMode = UiAssetMode.Resources;`（启动前设置）；
+  4. `UiManager.Bootstrap(new ResourcesPanelLoader());`（显式传入）。
+- **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`）；约定子目录 `UIPanel/` 与其对齐（地址 `UIPanel/{类型名}`）；
 - **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("类型名")` 同步加载（无需组、无需注册、无需配置资产）；
 - **注意事项**：Resources 目录内容会全部打入安装包（无法按需/分包/远程），同步加载适合原型与小项目；示例 Demo 即此模式。
 

@@ -34,8 +34,33 @@ namespace MyUI.Runtime
         public event Action<PanelRecord, bool> PanelClosed; // (record, pooled)
         public event Action<string, string> PanelLoadFailed; // (panelName, error)
 
-        /// <summary>资源加载方式开关。默认 Addressables（当前推荐，Resources 仅作兼容回退）。</summary>
-        public static UiAssetMode AssetMode { get; set; } = UiAssetMode.Addressables;
+        /// <summary>资源加载方式开关。默认值来自 MyUI 窗口配置（MyUI → Settings & Registration），
+        /// 缺配置时按 Addressables；代码仍可随时覆盖本属性。</summary>
+        public static UiAssetMode AssetMode { get; set; } = ResolveDefaultMode();
+
+        /// <summary>
+        /// 默认加载模式来源于工具生成的 Assets/MyUI/MyUiLoaderConfig.cs
+        /// （窗口勾选保存；缺文件时按 Addressables）。反射读取，避免 Runtime 程序集
+        /// 依赖用户的 Assembly-CSharp。
+        /// </summary>
+        private static UiAssetMode ResolveDefaultMode()
+        {
+            try
+            {
+                Type t = Type.GetType("MyUI.MyUiLoaderConfig, Assembly-CSharp");
+                string mode = t?.GetField("Mode", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string;
+                if (mode == "Resources")
+                {
+                    return UiAssetMode.Resources;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MyUI] 读取加载模式配置失败（" + e.Message + "），使用 Addressables");
+            }
+
+            return UiAssetMode.Addressables;
+        }
 
         /// <summary>
         /// 是否自动启动框架（默认 true：游戏运行时自动 Bootstrap，无需写任何启动代码）。
