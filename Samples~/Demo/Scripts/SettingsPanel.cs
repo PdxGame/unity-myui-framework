@@ -22,12 +22,12 @@ namespace MyUI.Examples
 
         protected override void OnOpen(object userData)
         {
-            Debug.Log("[SettingsPanel] 设置弹窗打开");
+            Debug.Log("[SettingsPanel] Settings opened");
         }
 
         protected override void OnHide()
         {
-            Debug.Log("[SettingsPanel] 关闭中");
+            Debug.Log("[SettingsPanel] Closing");
         }
     }
 }

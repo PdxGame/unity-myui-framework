@@ -26,6 +26,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 > Demo 启动器是静态自举的（`RuntimeInitializeOnLoadMethod`）：不需要场景对象、不需要相机。
 > Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/` 子目录，地址=类型名），克隆即跑零配置。
+> Demo 文案为英文，使用 TMP 默认字体（LiberationSans SDF）——若编辑器提示导入 TMP Essentials，执行 `Window → TextMeshPro → Import TMP Essential Resources`（TMP 标准流程一次即可）。
 
 ## 做一个新页面（5 步）
 
@@ -55,7 +56,7 @@ UiManager.CloseAll();                    // 清场
 │   ├─ MyUI.Runtime/       UiPanel 基类、UiManager 门面、UiRoot 分层、加载器、Tester
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集，默认加载方式）
 ├─ Editor/MyUI.Editor/     Inspector 调试按钮、面板注册菜单
-├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/）+ 字体（Fonts/）
+├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/，TMP 默认字体）
 └─ Tests/                   EditMode 单测（20 条）
 Docs/                       使用手册与实现原理 + 两家框架源码分析报告
 ```
@@ -68,4 +69,4 @@ Test Runner → EditMode → Run All（20 条：打开/关闭序列、聚焦、�
 
 - `Docs/MyUI-使用手册与实现原理.md`：完整手册（API/生命周期/配置/性能）与实现原理；
 - `Docs/GameFramework-UI-模块源码分析报告.md`、`Docs/QFramework_UIKit_源码分析报告.md`：设计对照的源码级考据；
-- 框架代码 **MIT**；Demo 内含 Smiley Sans 开源字体（OFL-1.1）。
+- 框架代码 **MIT**；Demo 使用 TMP 内置默认字体（无第三方字体资产，包体积保持纯脚本级）。

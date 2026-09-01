@@ -31,7 +31,7 @@ namespace MyUI.Examples
         private void OnQuitClicked()
         {
             UiManager.CloseAll();
-            Debug.Log("[MainMenu] 退出（演示：Play 模式不真退出）");
+            Debug.Log("[MainMenu] Quit (demo only)");
         }
     }
 }
