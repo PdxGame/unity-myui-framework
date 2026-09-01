@@ -134,7 +134,12 @@ namespace MyUI.Runtime
             _core = new UiManagerCore(loader, this);
             _core.PanelOpened += args => PanelOpened?.Invoke(args.Record);
             _core.PanelClosed += args => PanelClosed?.Invoke(args.Record, args.Pooled);
-            _core.PanelLoadFailed += args => PanelLoadFailed?.Invoke(args.PanelName, args.Error);
+            _core.PanelLoadFailed += args =>
+            {
+                PanelLoadFailed?.Invoke(args.PanelName, args.Error);
+                // 任何加载失败都必须控制台可见（无订阅者也看得到），避免"没 UI 也没报错"的静默
+                Debug.LogError("[MyUI] 面板加载失败：" + args.PanelName + " → " + args.Error);
+            };
         }
 
         private void Update()
