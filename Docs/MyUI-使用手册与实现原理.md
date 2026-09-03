@@ -2,7 +2,7 @@
 
 > 自研 Unity UI 管理框架（Unity 2022.3+，UGUI + TextMeshPro）。
 > 设计参照 GameFramework（状态机 / serialId / 遮挡生命周期 / 实例池）与 QFramework（固定层级 / 门面 API / 导航）。
-> 核心为纯 C# 状态机；框架本体零第三方依赖，Addressables 为默认加载方式（可选程序集，缺失自动回退 Resources）。
+> 核心为纯 C# 状态机，20 条 EditMode 单元测试；框架本体零第三方依赖，Addressables 为默认加载方式（可选程序集，缺失自动回退 Resources）。
 
 ---
 
@@ -18,7 +18,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 
 依赖（ugui / textmeshpro / addressables / test-framework）自动安装。
 
-**方式 B**：将 `Runtime/`、`Editor/`、`Tests/` 与 `package.json` 拷贝进项目任意目录。
+**方式 B**：将 `Runtime/`、`Editor/` 与 `package.json` 拷贝进项目任意目录（单元测试位于 dev 分支）。
 
 包结构：
 
@@ -30,7 +30,7 @@ https://github.com/PdxGame/unity-myui-framework.git
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集）
 ├─ Editor/MyUI.Editor/       Inspector 调试按钮、面板注册菜单
 ├─ Samples~/Demo/            示例：3 个面板（脚本 + 预制体）
-└─ Tests/                    单元测试（开发者用途，见开发者指南）
+└─ Tests/                    （本分支不含：单元测试位于 dev 分支，见开发者指南）
 ```
 
 ### 2. 快速开始
@@ -314,13 +314,17 @@ UIManager.Instance.PanelLoadFailed += (name, error) => { };
 - **UIPanelTester**：场景中任意 GameObject 挂该组件，填面板类型全名（如 `MyUI.Examples.MainMenuPanel`），Play 中一键打开；
 - **Inspector 调试按钮**：选中面板预制体，Inspector 顶部有打开/关闭按钮（编辑模式可预览生命周期流程）。
 
-### 13. 性能考虑
+### 13. 单元测试
+
+`Window → General → Test Runner → EditMode → Run All`：20 条用例覆盖打开/关闭序列、单实例聚焦、双开合并、加载中取消、延迟关闭、遮挡/暂停翻转、池复用（含 SerialId 刷新）、池容量/过期、导航栈、CloseAll 逆序、失败路径、多实例。
+
+### 14. 性能考虑
 
 - 每层独立 Canvas：跨层的面板互不影响彼此的渲染重建；同层面板仍可合批；
 - 高频刷新区域（如常驻 HUD）建议放置于 System 层，或局部包一层子 Canvas（勾 Override Sorting），避免频繁更新拖累整层渲染；
 - 常规面板根保持 Panel（如无特殊需求，避免为面板额外挂 Canvas 拆散合批）。
 
-### 14. 常见问题
+### 15. 常见问题
 
 1. **缺字/文字警告**：烘焙字体字符集不含「」等字符时 TMP 会警告。方案：文案避开未收录字符，或在烘焙字符集文件中追加。
 2. **文字挡住点击**：TMP 的 `raycastTarget` 记得关闭（`Bg` 等全屏色块同理）。

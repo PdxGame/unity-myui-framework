@@ -14,7 +14,9 @@
 https://github.com/PdxGame/unity-myui-framework.git
 ```
 
-依赖（ugui / textmeshpro / addressables / test-framework）会自动安装。
+依赖（ugui / textmeshpro / addressables）会自动安装。
+
+**分支**：`main` = 使用稳定版（无测试/开发材料）；`dev` = 开发者版（含单元测试与源码分析报告，见 `Docs/MyUI-开发者指南.md`）。
 
 **方式 B：拷贝** —— 把 `Runtime/`、`Editor/`、`Tests/` 与 `package.json` 拷进你项目任意目录（或 `Assets/` 下），去除 `Samples~`。
 
@@ -66,16 +68,12 @@ UIManager.CloseAll();                    // 清场
 │   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集，默认加载方式）
 ├─ Editor/MyUI.Editor/     Inspector 调试按钮、面板注册菜单
 ├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/UIPanel/，TMP 默认字体）
-└─ Tests/                   EditMode 单测（20 条）
-Docs/                       使用手册与实现原理 + 两家框架源码分析报告
+└─ Tests/                  单元测试（开发者在 dev 分支使用）
+Docs/                       使用手册与实现原理（开发者另见 dev 分支指南）
 ```
-
-## 单测
-
-Test Runner → EditMode → Run All（20 条：打开/关闭序列、聚焦、双开合并、加载中取消、延迟关闭、遮挡/暂停翻转、池复用/容量/过期、导航栈、CloseAll 逆序、失败路径、多实例）。
 
 ## 文档与许可
 
-- `Docs/MyUI-使用手册与实现原理.md`：完整手册（API/生命周期/配置/性能）与实现原理；
-- `Docs/GameFramework-UI-模块源码分析报告.md`、`Docs/QFramework_UIKit_源码分析报告.md`：设计对照的源码级考据；
+- `Docs/MyUI-使用手册与实现原理.md`：完整使用手册（API/生命周期/配置/性能）与实现原理；
+- `Docs/MyUI-开发者指南.md`（dev 分支）：单元测试、结构导览、扩展点与发布流程；
 - 框架代码 **MIT**；Demo 使用 TMP 内置默认字体（无第三方字体资产，包体积保持纯脚本级）。

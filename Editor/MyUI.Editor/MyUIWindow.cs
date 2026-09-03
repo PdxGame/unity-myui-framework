@@ -5,6 +5,7 @@ using MyUI.Runtime;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas; // BundledAssetGroupSchema
 using UnityEngine;
 
 namespace MyUI.Editor
@@ -412,9 +413,26 @@ namespace MyUI.Editor
                 {
                     try
                     {
-                        // 传空 schema 列表（避免 DefaultGroup 为空时内部空引用）
-                        group = settings.CreateGroup(_groupName, false, false, false,
-                            new List<AddressableAssetGroupSchema>(), null);
+                        // 建组必须带 Schema（Remote/Load Path 等属性依赖它）：
+                        // 优先复制默认组的 Schema；默认组缺失时兜底创建标准 BundledAssetGroupSchema
+                        var schemas = new List<AddressableAssetGroupSchema>();
+                        if (settings.DefaultGroup != null && settings.DefaultGroup.Schemas != null)
+                        {
+                            foreach (AddressableAssetGroupSchema s in settings.DefaultGroup.Schemas)
+                            {
+                                if (s != null)
+                                {
+                                    schemas.Add(s);
+                                }
+                            }
+                        }
+
+                        if (schemas.Count == 0)
+                        {
+                            schemas.Add(ScriptableObject.CreateInstance<BundledAssetGroupSchema>());
+                        }
+
+                        group = settings.CreateGroup(_groupName, false, false, false, schemas, null);
                     }
                     catch (Exception)
                     {

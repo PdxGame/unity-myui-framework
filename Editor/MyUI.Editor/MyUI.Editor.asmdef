@@ -4,7 +4,6 @@
     "references": [
         "MyUI.Core",
         "MyUI.Runtime",
-        "MyUI.Demo",
         "Unity.Addressables.Editor"
     ],
     "includePlatforms": [
