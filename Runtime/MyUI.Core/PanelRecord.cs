@@ -10,7 +10,7 @@ namespace MyUI.Core
     public sealed class PanelRecord
     {
         public PanelRecord(int serialId, Type panelType, string panelName, string address,
-            UILayer layer, UIInputMode inputMode, UIPauseBelowMode pauseBelow,
+            UILayer layer, bool blockInput, UIPauseBelowMode pauseBelow,
             UIOpenMode openMode, bool allowMulti, bool poolable, object userData,
             bool stackable = true)
         {
@@ -19,7 +19,7 @@ namespace MyUI.Core
             PanelName = panelName;
             Address = address;
             Layer = layer;
-            InputMode = inputMode;
+            BlockInput = blockInput;
             PauseBelow = pauseBelow;
             OpenMode = openMode;
             AllowMulti = allowMulti;
@@ -43,8 +43,8 @@ namespace MyUI.Core
         /// <summary>所属层级（构造时按特性/参数注入；AttachView 后可按 Inspector 配置覆盖）。</summary>
         public UILayer Layer { get; internal set; }
 
-        /// <summary>输入阻断方式；Inherit 等价于 Self。</summary>
-        public UIInputMode InputMode { get; internal set; }
+        /// <summary>是否创建框架全屏输入阻断器。</summary>
+        public bool BlockInput { get; internal set; }
 
         /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
         public UIPauseBelowMode PauseBelow { get; internal set; }
@@ -84,9 +84,6 @@ namespace MyUI.Core
         /// <summary>当前是否暂停（被声明了 PauseBelow 的遮挡源覆盖）。</summary>
         public bool Paused { get; internal set; }
 
-        public UIInputMode EffectiveInputMode =>
-            InputMode == UIInputMode.Inherit ? UIInputMode.Self : InputMode;
-
         public bool EffectivePauseBelow => PauseBelow == UIPauseBelowMode.Always;
 
         public UIOpenMode EffectiveOpenMode =>
@@ -96,7 +93,7 @@ namespace MyUI.Core
 
         /// <summary>该面板是否应对其下方形成逻辑遮挡。</summary>
         public bool CoversBelow =>
-            EffectiveInputMode == UIInputMode.Modal
+            BlockInput
             || EffectivePauseBelow;
 
         /// <summary>生命周期视图（Runtime 侧即 UIPanel 组件；Core 只通过 IUIPanelView 驱动它）。</summary>

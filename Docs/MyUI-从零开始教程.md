@@ -372,7 +372,7 @@ UIManager.OpenPanel<ShopPanel>(
 ```csharp
 UIManager.OpenPanel<ItemDetailPanel>(
     data: detailData,
-    inputMode: UIInputMode.Modal,
+    blockInput: true,
     pauseBelow: UIPauseBelowMode.Never,
     openMode: UIOpenMode.Overlay);
 ```
@@ -380,7 +380,7 @@ UIManager.OpenPanel<ItemDetailPanel>(
 这三个参数只覆盖当前这一次打开：
 
 ```text
-inputMode    输入阻断
+blockInput    输入阻断
 pauseBelow   是否暂停下层
 openMode     导航方式
 ```
@@ -406,14 +406,12 @@ public class EquipmentPanel : UIPanel
 }
 ```
 
-### 9.1 InputMode
+### 9.1 BlockInput
 
 | 值 | 说明 |
 |---|---|
-| `Inherit` | 等价于 `Self` |
-| `None` | 不创建输入阻断器 |
-| `Self` | 依赖预制体自身的 Raycast 设置 |
-| `Modal` | 创建全屏透明输入阻断器 |
+| `false` | 不创建输入阻断器，保留 Prefab 自身 Raycast 行为 |
+| `true` | 创建全屏透明输入阻断器 |
 
 ### 9.2 PauseBelow
 
@@ -437,26 +435,26 @@ public class EquipmentPanel : UIPanel
 // 全屏页面
 [UIPanel(
     UILayer.Normal,
-    InputMode = UIInputMode.Modal,
+    BlockInput = true,
     PauseBelow = UIPauseBelowMode.Always)]
 
 // 设置窗口
 [UIPanel(
     UILayer.Popup,
-    InputMode = UIInputMode.Modal,
+    BlockInput = true,
     PauseBelow = UIPauseBelowMode.Never)]
 
 // HUD
 [UIPanel(
     UILayer.HUD,
-    InputMode = UIInputMode.None,
+    BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay)]
 
 // Toast
 [UIPanel(
     UILayer.Toast,
-    InputMode = UIInputMode.None,
+    BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay,
     AllowMulti = true,
@@ -753,12 +751,12 @@ UIManager.Init(new MyAssetLoader());
 
 ### 页面打开后点击穿透
 
-检查 `InputMode`：
+检查 `BlockInput`：
 
 ```csharp
 [UIPanel(
     UILayer.Popup,
-    InputMode = UIInputMode.Modal)]
+    BlockInput = true)]
 ```
 
 ### 页面遮挡了下层，但下层没有暂停
@@ -812,7 +810,7 @@ UIManager.OpenPanel<ItemDetailPanel>(detailData);
 // 打开并覆盖本次行为
 UIManager.OpenPanel<ItemDetailPanel>(
     data: detailData,
-    inputMode: UIInputMode.Modal,
+    blockInput: true,
     pauseBelow: UIPauseBelowMode.Never,
     openMode: UIOpenMode.Overlay);
 
@@ -837,7 +835,7 @@ UIManager.IsOpen<ShopPanel>();
 2. 做一个只有打开和关闭的页面
 3. 学会 OnInit / OnOpen / OnClose
 4. 学会传数据
-5. 学会 InputMode、PauseBelow、OpenMode
+5. 学会 BlockInput、PauseBelow、OpenMode
 6. 学会层级
 7. 学会 Push / Overlay / Replace
 8. 学会 Addressables 注册

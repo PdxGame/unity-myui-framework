@@ -10,7 +10,7 @@ namespace MyUI.Examples
     /// </summary>
     [UIPanel(
         UILayer.Normal,
-        InputMode = UIInputMode.Modal,
+        BlockInput = true,
         PauseBelow = UIPauseBelowMode.Always)]
     public class GamePlayPanel : UIPanel
     {

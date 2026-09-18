@@ -100,7 +100,7 @@ namespace MyUI.Tests
             core.PanelLoadFailed += _ => failedEvents++;
 
             core.OpenPanel(typeof(FakeView), "Fake", "Fake", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, (_, error) => callbackError = error);
 
             Assert.That(callbackError, Does.Contain("load exploded"));
@@ -116,7 +116,7 @@ namespace MyUI.Tests
             string callbackError = null;
 
             core.OpenPanel(typeof(FakeView), "Fake", "Fake", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, (_, error) => callbackError = error);
 
             Assert.That(callbackError, Does.Contain("attach exploded"));
@@ -133,11 +133,11 @@ namespace MyUI.Tests
             var core = new UIManagerCore(loader, factory);
 
             core.OpenPanel(typeof(FakeView), "Fake", "Fake", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
             core.ClosePanelByName("Fake", immediate: true);
             core.OpenPanel(typeof(FakeView), "Fake", "Fake", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             Assert.That(loader.LoadCalls, Is.EqualTo(1));
@@ -154,7 +154,7 @@ namespace MyUI.Tests
             var core = new UIManagerCore(loader, factory);
 
             core.OpenPanel(typeof(FakeView), "Fake", "Fake", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
             core.Dispose();
 
@@ -172,7 +172,7 @@ namespace MyUI.Tests
             var core = new UIManagerCore(loader, factory);
 
             core.OpenPanel(typeof(FakeView), "Fake", "Fake", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
             core.ClosePanelByName("Fake", immediate: true);
             core.Dispose();
@@ -193,13 +193,13 @@ namespace MyUI.Tests
             loader.NextView = new object();
             factory.NextView = lowerView;
             core.OpenPanel(typeof(FakeView), "Page", "Page", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             loader.NextView = new object();
             factory.NextView = new FakeView();
             core.OpenPanel(typeof(FakeView), "Popup", "Popup", UILayer.Popup,
-                UIInputMode.Modal, UIPauseBelowMode.Never, UIOpenMode.Overlay,
+                true, UIPauseBelowMode.Never, UIOpenMode.Overlay,
                 false, true, null, null);
 
             PanelRecord page = core.GetRecord("Page");
@@ -219,12 +219,12 @@ namespace MyUI.Tests
 
             factory.NextView = lowerView;
             core.OpenPanel(typeof(FakeView), "Page", "Page", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             factory.NextView = new FakeView();
             core.OpenPanel(typeof(FakeView), "Popup", "Popup", UILayer.Popup,
-                UIInputMode.Self, UIPauseBelowMode.Never, UIOpenMode.Overlay,
+                false, UIPauseBelowMode.Never, UIOpenMode.Overlay,
                 false, true, null, null);
 
             PanelRecord page = core.GetRecord("Page");
@@ -242,12 +242,12 @@ namespace MyUI.Tests
 
             factory.NextView = lowerView;
             core.OpenPanel(typeof(FakeView), "Page", "Page", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             factory.NextView = new FakeView();
             core.OpenPanel(typeof(FakeView), "Popup", "Popup", UILayer.Popup,
-                UIInputMode.Modal, UIPauseBelowMode.Never, UIOpenMode.Overlay,
+                true, UIPauseBelowMode.Never, UIOpenMode.Overlay,
                 false, true, null, null);
 
             PanelRecord page = core.GetRecord("Page");
@@ -265,12 +265,12 @@ namespace MyUI.Tests
 
             factory.NextView = lowerView;
             core.OpenPanel(typeof(FakeView), "Page", "Page", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             factory.NextView = new FakeView();
             core.OpenPanel(typeof(FakeView), "PauseLayer", "PauseLayer", UILayer.Popup,
-                UIInputMode.None, UIPauseBelowMode.Always, UIOpenMode.Overlay,
+                false, UIPauseBelowMode.Always, UIOpenMode.Overlay,
                 false, true, null, null);
 
             PanelRecord page = core.GetRecord("Page");
@@ -292,12 +292,12 @@ namespace MyUI.Tests
 
             factory.NextView = lowerView;
             core.OpenPanel(typeof(FakeView), "Page", "Page", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             factory.NextView = new FakeView();
             core.OpenPanel(typeof(FakeView), "Hud", "Hud", UILayer.HUD,
-                UIInputMode.Self, UIPauseBelowMode.Never, UIOpenMode.Overlay,
+                false, UIPauseBelowMode.Never, UIOpenMode.Overlay,
                 false, true, null, null);
 
             PanelRecord page = core.GetRecord("Page");
@@ -309,10 +309,10 @@ namespace MyUI.Tests
         public void InputAndPause_DefaultToSelfAndNever()
         {
             var record = new PanelRecord(1, typeof(FakeView), "Page", "Page", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null);
 
-            Assert.That(record.EffectiveInputMode, Is.EqualTo(UIInputMode.Self));
+            Assert.That(record.BlockInput, Is.EqualTo(false));
             Assert.That(record.EffectivePauseBelow, Is.False);
             Assert.That(record.CoversBelow, Is.False);
         }
@@ -325,7 +325,7 @@ namespace MyUI.Tests
             var core = new UIManagerCore(loader, factory);
 
             core.OpenPanel(typeof(FakeView), "Pending", "Pending", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
             Assert.That(loader.Pending, Is.Not.Null);
 
@@ -344,7 +344,7 @@ namespace MyUI.Tests
             var core = new UIManagerCore(loader, factory);
 
             core.OpenPanel(typeof(FakeView), "Equipment", "Equipment", UILayer.Popup,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
             core.Back();
 
@@ -360,13 +360,13 @@ namespace MyUI.Tests
             var core = new UIManagerCore(loader, factory);
 
             core.OpenPanel(typeof(FakeView), "A", "A", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             loader.NextView = null;
             loader.NextError = "load failed";
             core.OpenPanel(typeof(FakeView), "B", "B", UILayer.Normal,
-                UIInputMode.Inherit, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
+                false, UIPauseBelowMode.Inherit, UIOpenMode.Inherit,
                 false, true, null, null);
 
             Assert.That(core.Navigation.Count, Is.Zero);
@@ -410,7 +410,7 @@ namespace MyUI.Tests
 
             Open(core, "A");
             Open(core, "B");
-            Open(core, "C", inputMode: UIInputMode.Inherit,
+            Open(core, "C", blockInput: false,
                 pauseBelow: UIPauseBelowMode.Inherit, openMode: UIOpenMode.Replace);
 
             Assert.That(core.IsOpen("A"), Is.True);
@@ -512,12 +512,12 @@ namespace MyUI.Tests
         }
 
         private static void Open(UIManagerCore core, string name, bool stackable = true,
-            UIInputMode inputMode = UIInputMode.Inherit,
+            bool blockInput = false,
             UIPauseBelowMode pauseBelow = UIPauseBelowMode.Inherit,
             UIOpenMode openMode = UIOpenMode.Inherit)
         {
             core.OpenPanel(typeof(FakeView), name, name, UILayer.Normal,
-                inputMode, pauseBelow, openMode,
+                blockInput, pauseBelow, openMode,
                 false, true, null, null, stackable);
         }
     }

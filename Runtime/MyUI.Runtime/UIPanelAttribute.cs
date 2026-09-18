@@ -6,7 +6,7 @@ namespace MyUI.Runtime
     /// <summary>
     /// 面板声明特性：标注在 UIPanel 子类上，描述层级与行为。
     /// 未标注时按默认值（Normal 层、非全屏、单实例、可入池）。
-    /// 用法示例：[UIPanel(UILayer.Popup, InputMode = UIInputMode.Modal)]
+    /// 用法示例：[UIPanel(UILayer.Popup, BlockInput = true)]
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public sealed class UIPanelAttribute : Attribute
@@ -21,8 +21,8 @@ namespace MyUI.Runtime
         /// <summary>所属层级（默认 Normal）。</summary>
         public UILayer Layer { get; set; } = UILayer.Normal;
 
-        /// <summary>输入阻断方式。默认 Inherit，等价于 Self。</summary>
-        public UIInputMode InputMode { get; set; } = UIInputMode.Inherit;
+        /// <summary>是否创建全屏输入阻断器。默认 false，依赖 Prefab 自身射线设置。</summary>
+        public bool BlockInput { get; set; } = false;
 
         /// <summary>对下方面板的暂停策略。默认 Inherit，等价于 Never。</summary>
         public UIPauseBelowMode PauseBelow { get; set; } = UIPauseBelowMode.Inherit;

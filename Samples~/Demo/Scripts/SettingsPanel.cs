@@ -8,7 +8,7 @@ namespace MyUI.Examples
     /// <summary>
     /// 设置弹窗（Popup 非全屏）：关闭按钮。验证非全屏弹窗只遮挡不暂停下层。
     /// </summary>
-    [UIPanel(UILayer.Popup, InputMode = UIInputMode.Modal, PauseBelow = UIPauseBelowMode.Never)]
+    [UIPanel(UILayer.Popup, BlockInput = true, PauseBelow = UIPauseBelowMode.Never)]
     public class SettingsPanel : UIPanel
     {
         [SerializeField] private Button closeButton;

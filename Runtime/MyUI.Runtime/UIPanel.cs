@@ -31,9 +31,9 @@ namespace MyUI.Runtime
         [Tooltip("面板所属层级（示例：主菜单 Normal 全屏、窗口 Popup、飘字 Toast）")]
         [SerializeField] internal UILayer inspectorLayer = UILayer.Normal;
 
-        /// <summary>输入阻断方式；Inherit 等价于 Self。</summary>
-        [Tooltip("输入阻断：Inherit / None / Self / Modal")]
-        [SerializeField] internal UIInputMode inspectorInputMode = UIInputMode.Inherit;
+        /// <summary>是否创建全屏输入阻断器。</summary>
+        [Tooltip("是否创建全屏透明输入阻断器")]
+        [SerializeField] internal bool inspectorBlockInput = false;
 
         /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
         [Tooltip("暂停下方：Inherit / Never / Always")]

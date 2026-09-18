@@ -20,7 +20,7 @@ namespace MyUI.Core
     /// 遮挡 / 暂停判定规则：
     ///   遮挡（Covered）：同层更晚打开的覆盖型面板，或更高层的覆盖型面板；
     ///   暂停（Paused）：被遮挡 且 遮挡源声明 PauseBelow。
-    ///   （即：InputMode/PauseBelow 决定行为；Toast 不参与遮挡。面板尺寸由 Prefab 决定。）
+    ///   （即：BlockInput/PauseBelow 决定行为；Toast 不参与遮挡。面板尺寸由 Prefab 决定。）
     ///
     /// 单实例语义：未标注 AllowMulti 的面板重复打开 = 聚焦（重新 OnOpen/OnShow + 置顶）；
     /// 加载中的重复打开会合并，只触发一次加载。
@@ -91,7 +91,7 @@ namespace MyUI.Core
         /// 注：被取消的打开请求会收到 (null, "cancelled")。
         /// </summary>
         public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
-            UIInputMode inputMode, UIPauseBelowMode pauseBelow, UIOpenMode openMode,
+            bool blockInput, UIPauseBelowMode pauseBelow, UIOpenMode openMode,
             bool allowMulti, bool poolable, object userData,
             Action<object, string> onDone, bool stackable = true)
         {
@@ -125,7 +125,7 @@ namespace MyUI.Core
             }
 
             var record = new PanelRecord(_nextSerialId++, panelType, panelName, address, layer,
-                inputMode, pauseBelow, openMode, allowMulti, poolable, userData, stackable);
+                blockInput, pauseBelow, openMode, allowMulti, poolable, userData, stackable);
             if (!allowMulti)
             {
                 _singles[panelName] = record;

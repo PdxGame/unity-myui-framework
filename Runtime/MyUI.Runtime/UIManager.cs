@@ -236,10 +236,7 @@ namespace MyUI.Runtime
                 record.Layer = panel.inspectorLayer;
             }
 
-            if (panel.inspectorInputMode != UIInputMode.Inherit)
-            {
-                record.InputMode = panel.inspectorInputMode;
-            }
+            record.BlockInput = record.BlockInput || panel.inspectorBlockInput;
 
             if (panel.inspectorPauseBelow != UIPauseBelowMode.Inherit)
             {
@@ -262,7 +259,7 @@ namespace MyUI.Runtime
                 panel.transform.SetParent(layerRoot, false);
             }
 
-            UIModalBlocker.Apply(panel.RectTransform, record.EffectiveInputMode == UIInputMode.Modal);
+            UIModalBlocker.Apply(panel.RectTransform, record.BlockInput);
 
             panel.SerialId = record.SerialId;
             panel.PanelName = record.PanelName;
@@ -321,23 +318,23 @@ namespace MyUI.Runtime
         /// <summary>
         /// 打开面板（泛型版）。data 会原样传给 UIPanel.OnOpen。
         /// onOpened / onFailed 只回调一次；单实例重复打开以现有实例聚焦回调。
-        /// 面板声明来自 [UIPanel] 特性（Layer / InputMode / PauseBelow / OpenMode 等），
+        /// 面板声明来自 [UIPanel] 特性（Layer / BlockInput / PauseBelow / OpenMode 等），
         /// 未标注时按默认值（Normal 层、单实例、可入池）。
         /// </summary>
         public static void OpenPanel<T>(object data = null,
             Action<UIPanel> onOpened = null, Action<string> onFailed = null,
-            UIInputMode? inputMode = null,
+            bool? blockInput = null,
             UIPauseBelowMode? pauseBelow = null,
             UIOpenMode? openMode = null) where T : UIPanel
         {
             UIManager instance = RequireInstance();
             UIPanelAttribute attr = ResolveAttribute(typeof(T));
-            UIInputMode resolvedInputMode = inputMode ?? attr.InputMode;
+            bool resolvedBlockInput = blockInput ?? attr.BlockInput;
             UIPauseBelowMode resolvedPauseBelow = pauseBelow ?? attr.PauseBelow;
             UIOpenMode resolvedOpenMode = openMode ?? attr.OpenMode;
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, null),
-                attr.Layer, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
+                attr.Layer, resolvedBlockInput, resolvedPauseBelow, resolvedOpenMode,
                 attr.AllowMulti, attr.Poolable, data,
                 (view, error) =>
                 {
@@ -366,18 +363,18 @@ namespace MyUI.Runtime
         /// </summary>
         public static void OpenPanel<T>(string address, object data = null,
             Action<UIPanel> onOpened = null, Action<string> onFailed = null,
-            UIInputMode? inputMode = null,
+            bool? blockInput = null,
             UIPauseBelowMode? pauseBelow = null,
             UIOpenMode? openMode = null) where T : UIPanel
         {
             UIManager instance = RequireInstance();
             UIPanelAttribute attr = ResolveAttribute(typeof(T));
-            UIInputMode resolvedInputMode = inputMode ?? attr.InputMode;
+            bool resolvedBlockInput = blockInput ?? attr.BlockInput;
             UIPauseBelowMode resolvedPauseBelow = pauseBelow ?? attr.PauseBelow;
             UIOpenMode resolvedOpenMode = openMode ?? attr.OpenMode;
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, address),
-                attr.Layer, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
+                attr.Layer, resolvedBlockInput, resolvedPauseBelow, resolvedOpenMode,
                 attr.AllowMulti, attr.Poolable, data,
                 (view, error) =>
                 {
@@ -414,7 +411,7 @@ namespace MyUI.Runtime
 
         /// <summary>打开面板的 Task 包装（回调版之上的语法糖；回调都发生在 Unity 主线程）。</summary>
         public static Task<UIPanel> OpenPanelAsync<T>(object data = null,
-            UIInputMode? inputMode = null,
+            bool? blockInput = null,
             UIPauseBelowMode? pauseBelow = null,
             UIOpenMode? openMode = null) where T : UIPanel
         {
@@ -422,7 +419,7 @@ namespace MyUI.Runtime
             OpenPanel<T>(data,
                 panel => tcs.TrySetResult(panel),
                 error => tcs.TrySetException(new InvalidOperationException("打开面板失败: " + error)),
-                inputMode, pauseBelow, openMode);
+                blockInput, pauseBelow, openMode);
             return tcs.Task;
         }
 

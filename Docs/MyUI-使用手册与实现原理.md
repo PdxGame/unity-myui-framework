@@ -166,7 +166,7 @@ UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
 | 配置 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `Layer` | `UILayer` | `Normal` | 面板所属层级 |
-| `InputMode` | `UIInputMode` | `Inherit` | 输入阻断方式 |
+| `BlockInput` | `bool` | `false` | 是否创建全屏透明输入阻断器 |
 | `PauseBelow` | `UIPauseBelowMode` | `Inherit` | 是否暂停被覆盖的下层 |
 | `OpenMode` | `UIOpenMode` | `Inherit` | Overlay、Push 或 Replace |
 | `Poolable` | `bool` | `true` | 关闭后是否进入实例池 |
@@ -176,14 +176,12 @@ UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
 
 `AllowMulti` 与 `Address` 需要在打开前读取，因此只支持特性配置。
 
-### 5.2 InputMode
+### 5.2 BlockInput
 
 | 值 | 行为 |
 |---|---|
-| `Inherit` | 等价于 `Self` |
-| `None` | 不创建框架输入阻断器 |
-| `Self` | 依赖 Prefab 自身的 Graphic Raycast 设置 |
-| `Modal` | 自动创建全屏透明射线阻断器 |
+| `false` | 不创建框架阻断器，保留 Prefab 自身 Raycast 行为 |
+| `true` | 自动创建全屏透明阻断器，阻止点击穿透到低层 Canvas |
 
 模态阻断器在运行时创建为面板子节点：
 
@@ -201,11 +199,11 @@ __MyUI_ModalBlocker
 | `Never` | 永远不因本面板暂停下层 |
 | `Always` | 本面板形成覆盖时暂停下层 |
 
-`InputMode` 与 `PauseBelow` 相互独立：
+`BlockInput` 与 `PauseBelow` 相互独立：
 
-- 模态但不停逻辑：`InputMode=Modal`、`PauseBelow=Never`
-- 非模态但暂停逻辑：`InputMode=None`、`PauseBelow=Always`
-- 全屏模态并暂停：页面 Prefab 使用全屏锚点，并配置 `InputMode=Modal`、`PauseBelow=Always`
+- 阻挡点击但不停逻辑：`BlockInput=true`、`PauseBelow=Never`
+- 不阻挡点击但暂停逻辑：`BlockInput=false`、`PauseBelow=Always`
+- 阻挡点击并暂停：`BlockInput=true`、`PauseBelow=Always`
 
 ### 5.4 OpenMode
 
@@ -221,7 +219,7 @@ __MyUI_ModalBlocker
 ```csharp
 UIManager.OpenPanel<ItemDetailPanel>(
     data: openData,
-    inputMode: UIInputMode.Modal,
+    blockInput: true,
     pauseBelow: UIPauseBelowMode.Never,
     openMode: UIOpenMode.Overlay);
 ```
@@ -260,7 +258,7 @@ Toast
 
 面板被判定为覆盖型需要满足至少一项：
 
-- `InputMode = Modal`
+- `BlockInput = true`
 - `PauseBelow = Always`
 
 遮挡规则：
@@ -277,32 +275,32 @@ Toast
 // 全屏页面：布局由 Prefab 控制，输入、暂停显式配置
 [UIPanel(
     UILayer.Normal,
-    InputMode = UIInputMode.Modal,
+    BlockInput = true,
     PauseBelow = UIPauseBelowMode.Always)]
 
 // 设置窗口：阻断输入，不暂停下层
 [UIPanel(
     UILayer.Popup,
-    InputMode = UIInputMode.Modal,
+    BlockInput = true,
     PauseBelow = UIPauseBelowMode.Never)]
 
 // 确认框：阻断输入并暂停下层
 [UIPanel(
     UILayer.Popup,
-    InputMode = UIInputMode.Modal,
+    BlockInput = true,
     PauseBelow = UIPauseBelowMode.Always)]
 
 // HUD：不阻断、不暂停、不进入返回层级
 [UIPanel(
     UILayer.HUD,
-    InputMode = UIInputMode.None,
+    BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay)]
 
 // Toast：多实例、无遮挡、无返回
 [UIPanel(
     UILayer.Toast,
-    InputMode = UIInputMode.None,
+    BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay,
     AllowMulti = true,
@@ -604,13 +602,13 @@ Window -> General -> Test Runner -> EditMode
 
 检查：
 
-- `InputMode` 是否为 `Modal`
+- `BlockInput` 是否为 `true`
 - 面板根节点是否覆盖目标区域
 - Prefab 内部是否错误关闭了关键 Graphic 的 `raycastTarget`
 
 ### 页面被上层遮挡但没有暂停
 
-`PauseBelow` 控制逻辑暂停，`InputMode` 只控制输入阻断。需要暂停时设置：
+`PauseBelow` 控制逻辑暂停，`BlockInput` 只控制输入阻断。需要暂停时设置：
 
 ```csharp
 PauseBelow = UIPauseBelowMode.Always
@@ -665,7 +663,7 @@ Core 不直接引用 Unity 对象，因此可以在 EditMode 中使用假加载�
 - `PanelName`
 - `Address`
 - `Layer`
-- `InputMode`
+- `BlockInput`
 - `PauseBelow`
 - `OpenMode`
 - `State`
