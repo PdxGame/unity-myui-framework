@@ -243,13 +243,12 @@ namespace MyUI.Runtime
                 record.PauseBelow = panel.inspectorPauseBelow;
             }
 
-            if (panel.inspectorOpenMode != UIOpenMode.Inherit)
+            if (panel.inspectorOpenMode != UIOpenMode.Push)
             {
                 record.OpenMode = panel.inspectorOpenMode;
             }
 
             record.Poolable = record.Poolable && panel.inspectorPoolable;
-            record.Stackable = record.Stackable && panel.inspectorStackable;
 
             RectTransform layerRoot = UIRoot.Instance != null
                 ? UIRoot.Instance.GetLayerRoot(record.Layer)
@@ -346,8 +345,7 @@ namespace MyUI.Runtime
                     {
                         onOpened?.Invoke(view as UIPanel);
                     }
-                },
-                stackable: attr.Stackable);
+                });
         }
 
         /// <summary>保留旧三参数签名，兼容反射调用与既有编译代码。</summary>
@@ -386,8 +384,7 @@ namespace MyUI.Runtime
                     {
                         onOpened?.Invoke(view as UIPanel);
                     }
-                },
-                stackable: attr.Stackable);
+                });
         }
 
         /// <summary>保留旧四参数签名，兼容反射调用与既有编译代码。</summary>

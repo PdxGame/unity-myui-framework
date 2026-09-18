@@ -28,31 +28,25 @@ namespace MyUI.Runtime
         // 这样旧预制体没有保存字段时，不会用默认值吞掉代码特性。
 
         /// <summary>所属层级；Normal 为默认值，非 Normal 选择可覆盖 [UIPanel] 声明。</summary>
-        [Tooltip("面板所属层级（示例：主菜单 Normal 全屏、窗口 Popup、飘字 Toast）")]
+        [Tooltip("面板所属层级。决定渲染顺序和跨层遮挡关系；未在 Inspector 修改时继承 [UIPanel] 声明。")]
         [SerializeField] internal UILayer inspectorLayer = UILayer.Normal;
 
         /// <summary>是否创建全屏输入阻断器。</summary>
-        [Tooltip("是否创建全屏透明输入阻断器")]
+        [Tooltip("是否创建全屏透明输入阻断层。true 阻止点击穿透到下层；false 只依赖 Prefab 自身的 Raycast Target。")]
         [SerializeField] internal bool inspectorBlockInput = false;
 
         /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
-        [Tooltip("暂停下方：Inherit / Never / Always")]
+        [Tooltip("是否暂停被本面板遮挡的下层面板。Inherit / Never 表示不暂停；Always 只暂停下层逻辑，不负责输入阻断。")]
         [SerializeField] internal UIPauseBelowMode inspectorPauseBelow = UIPauseBelowMode.Inherit;
 
-        /// <summary>打开策略；Inherit 时 Stackable=true 为 Push，否则 Overlay。</summary>
-        [Tooltip("打开策略：Inherit / Overlay / Push / Replace")]
-        [SerializeField] internal UIOpenMode inspectorOpenMode = UIOpenMode.Inherit;
+        /// <summary>打开策略。</summary>
+        [Tooltip("打开策略。Push：保留当前页并登记返回；Overlay：不参与返回且不自动关闭；" +
+            "Replace：打开后关闭最高的可导航旧页面并继承其返回位置。")]
+        [SerializeField] internal UIOpenMode inspectorOpenMode = UIOpenMode.Push;
 
         /// <summary>关闭时是否入池复用（Inspector 勾选；默认勾选）。</summary>
-        [Tooltip("关闭时入池复用，下次打开不重建实例")]
+        [Tooltip("关闭后是否回收到对象池。true 时下次打开优先复用实例；false 时关闭后直接销毁。")]
         [SerializeField] internal bool inspectorPoolable = true;
-
-        /// <summary>
-        /// 兼容旧配置的返回开关（Inspector 勾选；默认勾选）。
-        /// OpenMode=Push 时参与返回；Overlay / Replace 不新增返回层级。
-        /// </summary>
-        [Tooltip("参与返回导航：取消勾选则打开时不影响返回历史（飘字/过场提示用）")]
-        [SerializeField] internal bool inspectorStackable = true;
 
         private RectTransform _rect;
 

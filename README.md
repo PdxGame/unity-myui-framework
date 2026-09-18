@@ -134,19 +134,18 @@ UIManager.CloseAll();
 | `Layer` | `UILayer` | 面板所在层级 |
 | `BlockInput` | `true / false` | `true` 自动创建全屏透明阻断器；`false` 依赖 Prefab 自身射线设置 |
 | `PauseBelow` | `Inherit / Never / Always` | 是否暂停被其覆盖的下层面板 |
-| `OpenMode` | `Inherit / Overlay / Push / Replace` | 打开策略与返回层级规则 |
+| `OpenMode` | `Overlay / Push / Replace` | 打开策略与返回层级规则，默认 `Push` |
 | `Poolable` | `true / false` | 关闭后是否进入实例池 |
-| `Stackable` | `true / false` | 兼容返回配置；主要配合 `OpenMode=Push` |
 | `AllowMulti` | `true / false` | 是否允许同类型多实例，仅特性配置 |
 | `Address` | `string` | 覆盖默认资源地址，仅特性配置 |
 
-### 默认继承规则
+### 默认值
 
 未显式配置时：
 
 ```text
 PauseBelow  Inherit -> Never
-OpenMode    Inherit -> Stackable ? Push : Overlay
+OpenMode    Push
 ```
 
 页面尺寸与锚点完全由 Prefab 决定。需要阻断输入时设置 `BlockInput = true`，需要暂停下层时设置 `PauseBelow = Always`。
@@ -179,8 +178,7 @@ OpenMode    Inherit -> Stackable ? Push : Overlay
     BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay,
-    AllowMulti = true,
-    Stackable = false)]
+    AllowMulti = true)]
 ```
 
 ### 单次打开覆盖
@@ -266,18 +264,18 @@ UIManager.OpenPanel<SettingsPanel>(
     openMode: UIOpenMode.Overlay);
 ```
 
-Overlay 不会因为调用 `Back()` 而自动关闭；需要在面板内部关闭，或实现 `IUINavigationHandler` 处理返回。
+Overlay 不会因为调用 `Back()` 而自动关闭；需要在面板内部关闭，或实现 `IUINavigationHandler` 处理返回。Overlay 也不会被 `Replace` 当作替换目标。
 
 ### Replace
 
-新面板打开成功后替换当前可返回页面，不增加返回层级：
+新面板打开成功后替换当前最高的可导航页面，不增加返回层级：
 
 ```csharp
 UIManager.OpenPanel<GamePlayPanel>(
     openMode: UIOpenMode.Replace);
 ```
 
-适合主菜单进入游戏、登录页进入大厅等页面替换场景。
+替换会跨层选择目标，但会跳过 `Overlay` 页面。适合主菜单进入游戏、登录页进入大厅等页面替换场景。
 
 ## 实例池
 

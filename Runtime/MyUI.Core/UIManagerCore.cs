@@ -93,7 +93,7 @@ namespace MyUI.Core
         public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
             bool blockInput, UIPauseBelowMode pauseBelow, UIOpenMode openMode,
             bool allowMulti, bool poolable, object userData,
-            Action<object, string> onDone, bool stackable = true)
+            Action<object, string> onDone)
         {
             if (_disposed)
             {
@@ -125,7 +125,7 @@ namespace MyUI.Core
             }
 
             var record = new PanelRecord(_nextSerialId++, panelType, panelName, address, layer,
-                blockInput, pauseBelow, openMode, allowMulti, poolable, userData, stackable);
+                blockInput, pauseBelow, openMode, allowMulti, poolable, userData);
             if (!allowMulti)
             {
                 _singles[panelName] = record;
@@ -670,7 +670,7 @@ namespace MyUI.Core
                 return;
             }
 
-            PanelRecord top = GetTopOpenRecord(null, stackableOnly: false);
+            PanelRecord top = GetTopOpenRecord(null, navigationOnly: false);
             if (top == null)
             {
                 return;
@@ -700,15 +700,15 @@ namespace MyUI.Core
         /// <summary>当前顶层面板的 serialId（最高层 + 层内最新）；无任何面板返回 -1（导航栈 Push 用）。</summary>
         public int GetTopOpenSerialId()
         {
-            PanelRecord best = GetTopOpenRecord(null, stackableOnly: false);
+            PanelRecord best = GetTopOpenRecord(null, navigationOnly: false);
             return best != null ? best.SerialId : -1;
         }
 
         /// <summary>
-        /// 返回当前最高层的打开记录。stackableOnly=true 时只考虑参与返回导航的面板，
+        /// 返回当前最高层的打开记录。navigationOnly=true 时只考虑参与返回导航的面板，
         /// 并排除正在完成打开的当前记录。
         /// </summary>
-        private PanelRecord GetTopOpenRecord(PanelRecord excluded, bool stackableOnly)
+        private PanelRecord GetTopOpenRecord(PanelRecord excluded, bool navigationOnly)
         {
             PanelRecord best = null;
             foreach (PanelRecord record in _all)
@@ -718,7 +718,7 @@ namespace MyUI.Core
                     continue;
                 }
 
-                if (stackableOnly && !record.Stackable)
+                if (navigationOnly && record.OpenMode == UIOpenMode.Overlay)
                 {
                     continue;
                 }
@@ -741,12 +741,12 @@ namespace MyUI.Core
         private void RegisterNavigation(PanelRecord record)
         {
             record.NavigationEntrySerialId = -1;
-            if (!record.Stackable || record.EffectiveOpenMode != UIOpenMode.Push)
+            if (record.OpenMode != UIOpenMode.Push)
             {
                 return;
             }
 
-            PanelRecord parent = GetTopOpenRecord(record, stackableOnly: true);
+            PanelRecord parent = GetTopOpenRecord(record, navigationOnly: true);
             if (parent == null)
             {
                 return;
@@ -762,12 +762,12 @@ namespace MyUI.Core
         /// </summary>
         private void ApplyReplace(PanelRecord record)
         {
-            if (record.EffectiveOpenMode != UIOpenMode.Replace)
+            if (record.OpenMode != UIOpenMode.Replace)
             {
                 return;
             }
 
-            PanelRecord replaced = GetTopOpenRecord(record, stackableOnly: true);
+            PanelRecord replaced = GetTopOpenRecord(record, navigationOnly: true);
             if (replaced == null)
             {
                 return;

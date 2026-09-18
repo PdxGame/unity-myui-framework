@@ -11,8 +11,7 @@ namespace MyUI.Core
     {
         public PanelRecord(int serialId, Type panelType, string panelName, string address,
             UILayer layer, bool blockInput, UIPauseBelowMode pauseBelow,
-            UIOpenMode openMode, bool allowMulti, bool poolable, object userData,
-            bool stackable = true)
+            UIOpenMode openMode, bool allowMulti, bool poolable, object userData)
         {
             SerialId = serialId;
             PanelType = panelType;
@@ -25,7 +24,6 @@ namespace MyUI.Core
             AllowMulti = allowMulti;
             Poolable = poolable;
             UserData = userData;
-            Stackable = stackable;
         }
 
         /// <summary>实例唯一标识（全局自增；GameFramework serialId 思路，可定向关闭某个实例）。</summary>
@@ -49,7 +47,7 @@ namespace MyUI.Core
         /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
         public UIPauseBelowMode PauseBelow { get; internal set; }
 
-        /// <summary>打开策略；Inherit 按 Stackable 推导。</summary>
+        /// <summary>打开策略。</summary>
         public UIOpenMode OpenMode { get; internal set; }
 
         /// <summary>是否允许多实例（Toast 类专用；默认 false 意味着重复打开只聚焦已有实例）。</summary>
@@ -57,12 +55,6 @@ namespace MyUI.Core
 
         /// <summary>关闭时是否入池复用（默认 true；可被 Inspector 配置覆盖）。</summary>
         public bool Poolable { get; internal set; }
-
-        /// <summary>
-        /// 是否参与返回导航（默认 true；代码特性与 Inspector 配置任一为 false 即不参与）。
-        /// 面板成功打开后才登记导航，加载失败 / 取消不会留下历史。
-        /// </summary>
-        public bool Stackable { get; internal set; }
 
         /// <summary>
         /// 本面板成功打开时登记的导航入口（其下方面板的 serialId）。
@@ -85,11 +77,6 @@ namespace MyUI.Core
         public bool Paused { get; internal set; }
 
         public bool EffectivePauseBelow => PauseBelow == UIPauseBelowMode.Always;
-
-        public UIOpenMode EffectiveOpenMode =>
-            OpenMode == UIOpenMode.Inherit
-                ? (Stackable ? UIOpenMode.Push : UIOpenMode.Overlay)
-                : OpenMode;
 
         /// <summary>该面板是否应对其下方形成逻辑遮挡。</summary>
         public bool CoversBelow =>

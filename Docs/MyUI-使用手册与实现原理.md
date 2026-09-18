@@ -168,9 +168,8 @@ UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
 | `Layer` | `UILayer` | `Normal` | 面板所属层级 |
 | `BlockInput` | `bool` | `false` | 是否创建全屏透明输入阻断器 |
 | `PauseBelow` | `UIPauseBelowMode` | `Inherit` | 是否暂停被覆盖的下层 |
-| `OpenMode` | `UIOpenMode` | `Inherit` | Overlay、Push 或 Replace |
+| `OpenMode` | `UIOpenMode` | `Push` | Overlay、Push 或 Replace |
 | `Poolable` | `bool` | `true` | 关闭后是否进入实例池 |
-| `Stackable` | `bool` | `true` | 兼容返回开关，主要配合 Push |
 | `AllowMulti` | `bool` | `false` | 是否允许同类型多实例 |
 | `Address` | `string` | `null` | 覆盖默认资源地址 |
 
@@ -209,10 +208,9 @@ __MyUI_ModalBlocker
 
 | 值 | 行为 |
 |---|---|
-| `Inherit` | `Stackable=true` 时为 `Push`，否则为 `Overlay` |
-| `Overlay` | 覆盖当前页面，不增加返回层级 |
-| `Push` | 保留当前页面并登记返回路径 |
-| `Replace` | 新页面成功后关闭当前可返回页面，不增加返回层级 |
+| `Overlay` | 覆盖当前页面，不增加返回层级；`Back()` 不会自动关闭，需由页面自行关闭 |
+| `Push` | 保留当前页面并登记返回路径，`Back()` 关闭当前页面 |
+| `Replace` | 新页面成功后关闭当前最高的可导航旧页面，并继承其返回位置；会跨层查找，但跳过 `Overlay` |
 
 ### 5.5 单次打开覆盖
 
@@ -303,8 +301,7 @@ Toast
     BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay,
-    AllowMulti = true,
-    Stackable = false)]
+    AllowMulti = true)]
 ```
 
 ## 8. 生命周期
@@ -437,7 +434,7 @@ UIManager.OpenPanel<GamePlayPanel>(
 - 登录页进入大厅
 - 启动页进入主界面
 
-Replace 不会增加返回层级。被替换页面的返回入口会转移给新页面。
+Replace 不会增加返回层级。它选择当前最高的可导航旧页面作为替换目标，跳过 `Overlay`，并把被替换页面的返回入口转移给新页面。
 
 ## 11. 页面内多级内容
 
@@ -677,8 +674,7 @@ Core 不直接引用 Unity 对象，因此可以在 EditMode 中使用假加载�
 -> 创建 PanelRecord
 -> 复用池实例或异步加载
 -> AttachView
--> 应用层级与行为配置
--> 拉伸全屏节点
+--> 应用层级与行为配置
 -> 创建模态阻断器
 -> RegisterNavigation
 -> OnInit / OnOpen / OnShow
@@ -718,9 +714,9 @@ Push 模式在面板成功打开后登记父页面：
 
 返回时关闭当前页面并恢复父页面。
 
-Replace 模式直接把被替换页面的父入口转移给新页面。
+Replace 模式选择当前最高的可导航旧页面作为替换目标，跳过 Overlay，并把被替换页面的父入口转移给新页面。
 
-Overlay 不登记导航入口。
+Overlay 不登记导航入口，也不参与 Replace 目标选择。
 
 ## 19. 扩展点
 

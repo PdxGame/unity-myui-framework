@@ -27,8 +27,8 @@ namespace MyUI.Runtime
         /// <summary>对下方面板的暂停策略。默认 Inherit，等价于 Never。</summary>
         public UIPauseBelowMode PauseBelow { get; set; } = UIPauseBelowMode.Inherit;
 
-        /// <summary>打开策略。默认 Inherit：Stackable=true 时 Push，否则 Overlay。</summary>
-        public UIOpenMode OpenMode { get; set; } = UIOpenMode.Inherit;
+        /// <summary>打开策略。默认 Push。</summary>
+        public UIOpenMode OpenMode { get; set; } = UIOpenMode.Push;
 
         /// <summary>同类型是否允许多实例（Toast 类专用）。默认 false：重复打开只聚焦已有实例。</summary>
         public bool AllowMulti { get; set; } = false;
@@ -39,10 +39,5 @@ namespace MyUI.Runtime
         /// <summary>资源地址覆盖；默认按约定 "UIPanel/{TypeName}"。</summary>
         public string Address { get; set; } = null;
 
-        /// <summary>
-        /// 兼容旧配置的返回开关。默认 true。
-        /// OpenMode=Push 时参与返回；Overlay / Replace 不新增返回层级。
-        /// </summary>
-        public bool Stackable { get; set; } = true;
     }
 }

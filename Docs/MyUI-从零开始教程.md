@@ -425,9 +425,9 @@ public class EquipmentPanel : UIPanel
 
 | 值 | 说明 |
 |---|---|
-| `Overlay` | 覆盖当前页面，不增加返回层级 |
-| `Push` | 保留当前页面并增加返回层级 |
-| `Replace` | 替换当前页面，不增加返回层级 |
+| `Overlay` | 覆盖当前页面，不增加返回层级；`Back()` 不会自动关闭 |
+| `Push` | 保留当前页面并增加返回层级，默认值 |
+| `Replace` | 关闭当前最高的可导航旧页面，不增加返回层级，并跳过 `Overlay` |
 
 常用组合：
 
@@ -457,8 +457,7 @@ public class EquipmentPanel : UIPanel
     BlockInput = false,
     PauseBelow = UIPauseBelowMode.Never,
     OpenMode = UIOpenMode.Overlay,
-    AllowMulti = true,
-    Stackable = false)]
+    AllowMulti = true)]
 ```
 
 ## 10. 层级

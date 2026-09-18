@@ -13,12 +13,9 @@ namespace MyUI.Core
 
     /// <summary>
     /// 打开策略。
-    /// Inherit 的默认规则：Stackable=true 时 Push，否则 Overlay。
     /// </summary>
     public enum UIOpenMode
     {
-        Inherit = 0,
-
         /// <summary>覆盖在当前内容之上，不登记返回路径。</summary>
         Overlay = 1,
 
