@@ -1,6 +1,5 @@
 using MyUI.Core;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace MyUI.Runtime
 {
@@ -96,29 +95,13 @@ namespace MyUI.Runtime
         }
 
         /// <summary>
-        /// 便捷查找：按节点名取子物体组件（BindButton 的底层）。
-        /// 找不到返回 null（不抛异常），适合在 OnInit 里一次绑完所有控件。
+        /// 按节点名查找子物体组件。
+        /// 找不到返回 null，不抛异常。
         /// </summary>
         protected T Find<T>(string nodeName) where T : Component
         {
             Transform t = RectTransform.Find(nodeName);
             return t != null ? t.GetComponent<T>() : null;
-        }
-
-        /// <summary>
-        /// 绑定按钮点击（自动 Find + 获取 Button + AddListener）。
-        /// 找不到节点/组件时打警告，不影响其它绑定。在 OnInit 中调用即可。
-        /// </summary>
-        protected void BindButton(string nodeName, UnityEngine.Events.UnityAction onClick)
-        {
-            var btn = Find<Button>(nodeName);
-            if (btn == null)
-            {
-                Debug.LogWarning($"[UIPanel] 未找到按钮节点或缺失 Button 组件: {nodeName}", this);
-                return;
-            }
-
-            btn.onClick.AddListener(onClick);
         }
 
         // ---------- IUIPanelView 显式实现：转发给可覆写虚方法 ----------

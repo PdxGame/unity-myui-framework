@@ -74,6 +74,8 @@ public class GameBootstrap : MonoBehaviour
 ```csharp
 using MyUI.Core;
 using MyUI.Runtime;
+using UnityEngine;
+using UnityEngine.UI;
 
 [UIPanel(
     UILayer.Normal,
@@ -81,9 +83,21 @@ using MyUI.Runtime;
     OpenMode = UIOpenMode.Push)]
 public class EquipmentPanel : UIPanel
 {
+    [SerializeField] private Button closeButton;
+
     protected override void OnInit()
     {
-        BindButton("Btn_Close", () => Close());
+        closeButton.onClick.AddListener(OnCloseClicked);
+    }
+
+    private void OnCloseClicked()
+    {
+        Close();
+    }
+
+    protected override void OnClose(bool pooled)
+    {
+        closeButton.onClick.RemoveListener(OnCloseClicked);
     }
 }
 ```

@@ -501,7 +501,9 @@ Toast
 
 ## 11. 按钮绑定
 
-### 11.1 Unity 原生方式
+MyUI 支持两种绑定方式。正常业务优先使用第一种。
+
+### 11.1 Unity 原生方式（推荐）
 
 推荐正常业务优先使用：
 
@@ -530,46 +532,23 @@ protected override void OnClose(bool pooled)
 - 不需要记住节点名字
 - 拖引用时能直接检查
 
-### 11.2 BindButton
+### 11.2 监听器清理
 
-`BindButton` 是 MyUI 提供的辅助方法，不是必须使用的方法。
-
-方法定义：
+按钮监听应该在页面打开时添加，在页面关闭时移除：
 
 ```csharp
-protected void BindButton(
-    string nodeName,
-    UnityEngine.Events.UnityAction onClick)
-```
-
-示例：
-
-```csharp
-protected override void OnInit()
+protected override void OnOpen(object userData)
 {
-    BindButton("Btn_Close", () => Close());
+    startButton.onClick.AddListener(OnStartClicked);
+}
+
+protected override void OnClose(bool pooled)
+{
+    startButton.onClick.RemoveListener(OnStartClicked);
 }
 ```
 
-参数含义：
-
-```text
-"Btn_Close"
-    从当前面板根节点开始查找的节点名
-
-() => Close()
-    点击后执行的代码
-```
-
-嵌套节点可以写路径：
-
-```csharp
-BindButton("Header/Btn_Close", () => Close());
-```
-
-`BindButton` 只负责查找按钮并添加监听。它不会递归搜索整个页面树。
-
-如果你不需要字符串查找，使用 `[SerializeField] Button` 即可。
+在页面池化复用时，`OnInit` 不会再次执行，因此动态监听必须按需在 `OnOpen` 中重新添加。
 
 ## 12. 共享业务数据
 

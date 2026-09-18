@@ -1,5 +1,7 @@
 using MyUI.Core;
 using MyUI.Runtime;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace MyUI.Examples
 {
@@ -7,11 +9,30 @@ namespace MyUI.Examples
     /// 游戏页（全屏）：从主菜单「开始游戏」进入；点「返回主菜单」关闭自己露出主菜单。
     /// </summary>
     [UIPanel(UILayer.Normal, FullScreen = true)]
-    public sealed class GamePlayPanel : UIPanel
+    public class GamePlayPanel : UIPanel
     {
-        protected override void OnInit()
+        [SerializeField] private Button backButton;
+
+        protected override void OnOpen(object userData)
         {
-            BindButton("Btn_Back", OnBackClicked);
+            BindButtonListeners();
+        }
+
+        protected override void OnClose(bool pooled)
+        {
+            UnbindButtonListeners();
+        }
+
+        private void BindButtonListeners()
+        {
+            UnbindButtonListeners();
+            backButton ??= Find<Button>("Btn_Back");
+            if (backButton != null) backButton.onClick.AddListener(OnBackClicked);
+        }
+
+        private void UnbindButtonListeners()
+        {
+            if (backButton != null) backButton.onClick.RemoveListener(OnBackClicked);
         }
 
         private void OnBackClicked()

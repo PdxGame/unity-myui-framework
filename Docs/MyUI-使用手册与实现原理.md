@@ -90,6 +90,7 @@ public class GameBootstrap : MonoBehaviour
 using MyUI.Core;
 using MyUI.Runtime;
 using UnityEngine;
+using UnityEngine.UI;
 
 [UIPanel(
     UILayer.Normal,
@@ -97,14 +98,21 @@ using UnityEngine;
     OpenMode = UIOpenMode.Push)]
 public class EquipmentPanel : UIPanel
 {
+    [SerializeField] private Button closeButton;
+
+    protected override void OnInit()
+    {
+        closeButton.onClick.AddListener(OnCloseButton);
+    }
+
     private void OnCloseButton()
     {
         Close();
     }
 
-    protected override void OnInit()
+    protected override void OnClose(bool pooled)
     {
-        BindButton("Btn_Close", OnCloseButton);
+        closeButton.onClick.RemoveListener(OnCloseButton);
     }
 
     protected override void OnOpen(object userData)
@@ -121,6 +129,8 @@ public class EquipmentPanel : UIPanel
     }
 }
 ```
+
+按钮监听使用 Unity 原生 `Button.onClick.AddListener`。页面池化复用时，动态监听在 `OnOpen` 中添加，并在 `OnClose` 中移除。
 
 ### 4.2 预制体
 

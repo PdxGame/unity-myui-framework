@@ -1,6 +1,7 @@
 using MyUI.Core;
 using MyUI.Runtime;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace MyUI.Examples
 {
@@ -9,13 +10,40 @@ namespace MyUI.Examples
     /// 打开新页面只需 OpenPanel 一句（返回路径由框架自动记录，Back() 可回退）。
     /// </summary>
     [UIPanel(UILayer.Normal, FullScreen = true)]
-    public sealed class MainMenuPanel : UIPanel
+    public class MainMenuPanel : UIPanel
     {
-        protected override void OnInit()
+        [SerializeField] private Button startButton;
+        [SerializeField] private Button settingsButton;
+        [SerializeField] private Button quitButton;
+
+        protected override void OnOpen(object userData)
         {
-            BindButton("Btn_Start", OnStartClicked);
-            BindButton("Btn_Settings", OnSettingsClicked);
-            BindButton("Btn_Quit", OnQuitClicked);
+            BindButtonListeners();
+        }
+
+        protected override void OnClose(bool pooled)
+        {
+            UnbindButtonListeners();
+        }
+
+        private void BindButtonListeners()
+        {
+            UnbindButtonListeners();
+
+            startButton ??= Find<Button>("Btn_Start");
+            settingsButton ??= Find<Button>("Btn_Settings");
+            quitButton ??= Find<Button>("Btn_Quit");
+
+            if (startButton != null) startButton.onClick.AddListener(OnStartClicked);
+            if (settingsButton != null) settingsButton.onClick.AddListener(OnSettingsClicked);
+            if (quitButton != null) quitButton.onClick.AddListener(OnQuitClicked);
+        }
+
+        private void UnbindButtonListeners()
+        {
+            if (startButton != null) startButton.onClick.RemoveListener(OnStartClicked);
+            if (settingsButton != null) settingsButton.onClick.RemoveListener(OnSettingsClicked);
+            if (quitButton != null) quitButton.onClick.RemoveListener(OnQuitClicked);
         }
 
         private void OnStartClicked()
