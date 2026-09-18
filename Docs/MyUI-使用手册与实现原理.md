@@ -1,370 +1,761 @@
-# MyUI 框架：使用手册与实现原理
+# MyUI 使用手册与实现原理
 
-> 自研 Unity UI 管理框架（Unity 2022.3+，UGUI + TextMeshPro）。
-> 设计参照 GameFramework（状态机 / serialId / 遮挡生命周期 / 实例池）与 QFramework（固定层级 / 门面 API / 导航）。
-> 核心为纯 C# 状态机，20 条 EditMode 单元测试；框架本体零第三方依赖，Addressables 为默认加载方式（可选程序集，缺失自动回退 Resources）。
+MyUI 是面向 Unity 2022.3+ 的轻量 UI 管理框架，基于 UGUI 与 TextMeshPro。框架负责顶层面板的加载、生命周期、层级、输入阻断、逻辑暂停、实例池与返回导航。
+
+核心状态机为纯 C#，不依赖 UnityEngine。Unity 胶水层、Addressables 加载器和编辑器工具均通过独立程序集接入。
 
 ---
 
-## 第一部分：使用手册
+## 1. 安装
 
-### 1. 安装与包结构
+### 1.1 Git URL 安装
 
-**方式 A（推荐）**：`Window → Package Manager → ＋ → Add package from git URL`：
+Unity 中打开：
 
+```text
+Window -> Package Manager -> + -> Add package from git URL...
 ```
+
+输入：
+
+```text
 https://github.com/PdxGame/unity-myui-framework.git
 ```
 
-依赖（ugui / textmeshpro / addressables / test-framework）自动安装。
+### 1.2 本地安装
 
-**方式 B**：将 `Runtime/`、`Editor/` 与 `package.json` 拷贝进项目任意目录（单元测试位于 dev 分支）。
+将以下内容复制到项目的 `Packages` 或 `Assets` 目录：
 
-包结构：
-
-```
-├─ package.json              UPM 元数据（依赖 / Sample 清单）
-├─ Runtime/
-│   ├─ MyUI.Core/            纯 C# 状态机：打开/关闭/合并/取消/遮挡/暂停/池/导航
-│   ├─ MyUI.Runtime/         UIPanel 基类、UIManager 门面、UIRoot 分层、加载器、Tester
-│   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集）
-├─ Editor/MyUI.Editor/       Inspector 调试按钮、面板注册菜单
-├─ Samples~/Demo/            示例：3 个面板（脚本 + 预制体）
-└─ Tests/                    （本分支不含：单元测试位于 dev 分支，见开发者指南）
+```text
+package.json
+Runtime/
+Editor/
+Tests/
 ```
 
-### 2. 快速开始
+如果放入 `Assets`，应避免与项目已有程序集名称或命名空间冲突。
 
-入口处调用一次 `UIManager.Init()`（唯一启动方式，幂等），随后全局可用（Init 会自动创建 UI 根与 EventSystem、按窗口①配置绑定加载器）：
+## 2. 包结构
+
+```text
+Runtime/
+  MyUI.Core/                    纯 C# 状态机
+  MyUI.Runtime/                 Unity 门面、UIPanel、UIRoot、加载器接口
+  MyUI.Loaders.Addressables/    Addressables 加载器
+Editor/
+  MyUI.Editor/                  Inspector 扩展与注册窗口
+Samples~/Demo/                  Demo 面板与预制体
+Tests/                          EditMode 测试
+```
+
+核心职责：
+
+| 模块 | 职责 |
+|---|---|
+| `MyUI.Core` | 面板记录、状态迁移、遮挡与暂停计算、导航栈、实例池决策 |
+| `MyUI.Runtime` | `UIManager`、`UIPanel`、`UIRoot`、运行时生命周期与 Unity 对象管理 |
+| `MyUI.Loaders.Addressables` | 从 Addressables 异步加载面板 |
+| `MyUI.Editor` | 加载模式配置、资源注册、Inspector 调试入口 |
+
+## 3. 启动框架
+
+在项目入口调用一次：
 
 ```csharp
 using MyUI.Runtime;
 
-UIManager.Init();                           // 启动框架（入口一次）
-UIManager.OpenPanel<MainMenuPanel>();       // 打开面板（地址默认 = 类型名）
-
-// 关闭（面板内部）
-Close();
-// 关闭（框架外）
-UIManager.ClosePanel(panel);
-UIManager.ClosePanel("MainMenuPanel");
-UIManager.ClosePanel<MainMenuPanel>();
-UIManager.CloseAll();         // 清场（切场景时）
+public sealed class GameBootstrap : MonoBehaviour
+{
+    private void Awake()
+    {
+        UIManager.Init();
+    }
+}
 ```
 
-打开新页面时框架自动记录返回路径，`Back()` 在有历史时回退：
+`Init()` 会：
+
+- 创建常驻 `UIRoot`
+- 创建每个层级的 Canvas
+- 确保场景存在 `EventSystem`
+- 根据配置选择默认资源加载器
+
+`Init()` 是幂等操作。重复调用会返回现有管理器。
+
+## 4. 创建面板
+
+### 4.1 面板脚本
+
+```csharp
+using MyUI.Core;
+using MyUI.Runtime;
+using UnityEngine;
+
+[UIPanel(
+    UILayer.Normal,
+    FullScreen = true,
+    OpenMode = UIOpenMode.Push)]
+public sealed class EquipmentPanel : UIPanel
+{
+    private void OnCloseButton()
+    {
+        Close();
+    }
+
+    protected override void OnInit()
+    {
+        BindButton("Btn_Close", OnCloseButton);
+    }
+
+    protected override void OnOpen(object userData)
+    {
+        if (userData is EquipmentOpenData data)
+        {
+            Refresh(data);
+        }
+    }
+
+    private void Refresh(EquipmentOpenData data)
+    {
+        Debug.Log("Open source: " + data.Source);
+    }
+}
+```
+
+### 4.2 预制体
+
+面板预制体根节点必须挂载对应 `UIPanel` 子类。
+
+推荐保持以下命名一致：
+
+```text
+类型名 == Prefab 文件名 == Addressables 地址
+
+EquipmentPanel.cs
+EquipmentPanel.prefab
+Address = EquipmentPanel
+```
+
+### 4.3 打开面板
+
+```csharp
+UIManager.OpenPanel<EquipmentPanel>();
+
+UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
+{
+    ItemInstanceId = itemInstanceId,
+    Source = ItemSource.Equipment,
+});
+```
+
+## 5. 面板配置
+
+配置可以写在 `[UIPanel]` 特性中，也可以在预制体 Inspector 上配置。
+
+### 5.1 配置项
+
+| 配置 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `Layer` | `UILayer` | `Normal` | 面板所属层级 |
+| `FullScreen` | `bool` | `false` | 是否自动拉伸根节点到所属层 |
+| `InputMode` | `UIInputMode` | `Inherit` | 输入阻断方式 |
+| `PauseBelow` | `UIPauseBelowMode` | `Inherit` | 是否暂停被覆盖的下层 |
+| `OpenMode` | `UIOpenMode` | `Inherit` | Overlay、Push 或 Replace |
+| `Poolable` | `bool` | `true` | 关闭后是否进入实例池 |
+| `Stackable` | `bool` | `true` | 兼容返回开关，主要配合 Push |
+| `AllowMulti` | `bool` | `false` | 是否允许同类型多实例 |
+| `Address` | `string` | `null` | 覆盖默认资源地址 |
+
+`AllowMulti` 与 `Address` 需要在打开前读取，因此只支持特性配置。
+
+### 5.2 FullScreen
+
+`FullScreen = true`：
+
+- 面板打开时自动设置为全屏锚点
+- `anchorMin = (0, 0)`
+- `anchorMax = (1, 1)`
+- `anchoredPosition = (0, 0)`
+- `sizeDelta = (0, 0)`
+
+`FullScreen = false`：
+
+- 保留 Prefab 中的尺寸、锚点与布局
+- 适合窗口、弹窗、HUD、Toast
+
+`FullScreen` 只控制布局，不直接决定输入阻断或暂停逻辑。
+
+### 5.3 InputMode
+
+| 值 | 行为 |
+|---|---|
+| `Inherit` | `FullScreen=true` 时为 `Modal`，否则为 `Self` |
+| `None` | 不创建框架输入阻断器 |
+| `Self` | 依赖 Prefab 自身的 Graphic Raycast 设置 |
+| `Modal` | 自动创建全屏透明射线阻断器 |
+
+模态阻断器在运行时创建为面板子节点：
+
+```text
+__MyUI_ModalBlocker
+```
+
+它的作用是阻止点击穿透到低层 Canvas。业务代码不需要主动管理该节点。
+
+### 5.4 PauseBelow
+
+| 值 | 行为 |
+|---|---|
+| `Inherit` | `FullScreen=true` 时暂停下层，否则不暂停 |
+| `Never` | 永远不因本面板暂停下层 |
+| `Always` | 本面板形成覆盖时暂停下层 |
+
+`InputMode` 与 `PauseBelow` 相互独立：
+
+- 模态但不停逻辑：`InputMode=Modal`、`PauseBelow=Never`
+- 非模态但暂停逻辑：`InputMode=None`、`PauseBelow=Always`
+- 全屏模态并暂停：`FullScreen=true`，其余使用默认继承
+
+### 5.5 OpenMode
+
+| 值 | 行为 |
+|---|---|
+| `Inherit` | `Stackable=true` 时为 `Push`，否则为 `Overlay` |
+| `Overlay` | 覆盖当前页面，不增加返回层级 |
+| `Push` | 保留当前页面并登记返回路径 |
+| `Replace` | 新页面成功后关闭当前可返回页面，不增加返回层级 |
+
+### 5.6 单次打开覆盖
+
+```csharp
+UIManager.OpenPanel<ItemDetailPanel>(
+    data: openData,
+    inputMode: UIInputMode.Modal,
+    pauseBelow: UIPauseBelowMode.Never,
+    openMode: UIOpenMode.Overlay);
+```
+
+单次覆盖不会修改面板资源中的默认配置。
+
+## 6. 层级
+
+层级渲染与遮挡顺序：
+
+```text
+Background
+Normal
+HUD
+Popup
+Guide
+System
+Toast
+```
+
+推荐用途：
+
+| 层级 | 用途 |
+|---|---|
+| `Background` | 全屏背景、场景底图 |
+| `Normal` | 主菜单、装备页、背包页、游戏主界面 |
+| `HUD` | 金币、血量、任务追踪、常驻操作区 |
+| `Popup` | 设置、确认框、商店窗口 |
+| `Guide` | 新手引导、教学遮罩 |
+| `System` | 加载遮罩、断线提示、强制更新 |
+| `Toast` | 飘字、轻提示、短消息 |
+
+每层使用独立 Canvas。Panels 的渲染顺序由 Canvas Sorting Order 控制，同层面板由打开顺序控制。
+
+## 7. 遮挡与暂停
+
+面板被判定为覆盖型需要满足至少一项：
+
+- `FullScreen = true`
+- `InputMode = Modal`
+- `PauseBelow = Always`
+
+遮挡规则：
+
+1. 同层中，后打开的覆盖型面板遮挡先打开的页面。
+2. 更高层的覆盖型面板遮挡低层页面。
+3. 非模态窗口、普通 HUD 不形成跨层遮挡。
+4. 被覆盖且遮挡源声明 `PauseBelow` 时触发 `OnPause`。
+5. `Toast` 不参与遮挡和暂停。
+
+### 推荐组合
+
+```csharp
+// 全屏页面：全屏、模态、暂停下层
+[UIPanel(UILayer.Normal, FullScreen = true)]
+
+// 设置窗口：阻断输入，不暂停下层
+[UIPanel(
+    UILayer.Popup,
+    InputMode = UIInputMode.Modal,
+    PauseBelow = UIPauseBelowMode.Never)]
+
+// 确认框：阻断输入并暂停下层
+[UIPanel(
+    UILayer.Popup,
+    InputMode = UIInputMode.Modal,
+    PauseBelow = UIPauseBelowMode.Always)]
+
+// HUD：不阻断、不暂停、不进入返回层级
+[UIPanel(
+    UILayer.HUD,
+    InputMode = UIInputMode.None,
+    PauseBelow = UIPauseBelowMode.Never,
+    OpenMode = UIOpenMode.Overlay)]
+
+// Toast：多实例、无遮挡、无返回
+[UIPanel(
+    UILayer.Toast,
+    InputMode = UIInputMode.None,
+    PauseBelow = UIPauseBelowMode.Never,
+    OpenMode = UIOpenMode.Overlay,
+    AllowMulti = true,
+    Stackable = false)]
+```
+
+## 8. 生命周期
+
+```text
+OnInit
+OnOpen(object userData)
+OnShow
+OnCover
+OnReveal
+OnPause
+OnResume
+OnTick(float deltaTime)
+OnHide
+OnClose(bool pooled)
+OnDestroyed
+```
+
+| 回调 | 调用时机 | 建议用途 |
+|---|---|---|
+| `OnInit` | 实例创建后仅一次 | 获取控件、绑定按钮、初始化静态结构 |
+| `OnOpen` | 每次打开 | 接收数据、刷新页面状态 |
+| `OnShow` | 打开流程完成 | 播放进入动画、启动页面行为 |
+| `OnCover` | 被覆盖型面板遮挡 | 处理可见性相关状态 |
+| `OnReveal` | 遮挡解除 | 恢复显示相关状态 |
+| `OnPause` | 被声明 `PauseBelow` 的遮挡源覆盖 | 停止计时器、动画或逻辑更新 |
+| `OnResume` | 暂停解除 | 恢复页面逻辑 |
+| `OnTick` | 每帧，仅打开且未暂停 | 页面持续更新 |
+| `OnHide` | 关闭流程开始 | 播放关闭动画、隐藏页面 |
+| `OnClose` | 进入实例池或销毁前 | 释放订阅、协程、事件和临时资源 |
+| `OnDestroyed` | 实例真正销毁 | 释放不可复用资源 |
+
+## 9. 数据传递
+
+推荐传入业务 ID 与上下文，而不是让 UI 持有运行时数据源：
+
+```csharp
+public sealed class ItemDetailOpenData
+{
+    public long ItemInstanceId;
+    public ItemSource Source;
+}
+```
+
+打开：
+
+```csharp
+UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
+{
+    ItemInstanceId = itemInstanceId,
+    Source = ItemSource.Equipment,
+});
+```
+
+接收：
+
+```csharp
+protected override void OnOpen(object userData)
+{
+    if (userData is not ItemDetailOpenData data)
+    {
+        return;
+    }
+
+    var detail = inventoryService.GetDetailViewData(data.ItemInstanceId);
+    Refresh(detail);
+}
+```
+
+运行时数据应由业务 Model、Service 或 Repository 持有。面板关闭后，业务数据仍应继续存在。
+
+## 10. 导航
+
+### 10.1 Push
+
+```csharp
+UIManager.OpenPanel<EquipmentPanel>(
+    openMode: UIOpenMode.Push);
+```
+
+返回时：
 
 ```csharp
 UIManager.Back();
 ```
 
-> 说明：`Init()` 放在你自己的启动脚本（任意 MonoBehaviour 的 Start/Awake）即可，**不需要任何 `RuntimeInitializeOnLoadMethod` 之类标签**（Sample 的 Demo 用它只是"空场景也能演示"的示例技巧）。
-
-### 3. 开发一个新页面（5 步）
-
-**第 1 步：写脚本**（一个类 = 一个页面）：
+### 10.2 Overlay
 
 ```csharp
-using MyUI.Runtime;
+UIManager.OpenPanel<SettingsPanel>(
+    openMode: UIOpenMode.Overlay);
+```
 
-public sealed class ShopPanel : UIPanel
+Overlay 不增加返回层级。需要关闭时：
+
+```csharp
+UIManager.ClosePanel<SettingsPanel>();
+```
+
+页面存在内部返回步骤时，实现 `IUINavigationHandler`：
+
+```csharp
+public sealed class EquipmentPanel : UIPanel, IUINavigationHandler
 {
-    protected override void OnInit()
+    public bool HandleBack()
     {
-        BindButton("Btn_Close", OnCloseClicked);   // 一行绑定按钮
-    }
+        if (detailVisible)
+        {
+            ShowList();
+            return true;
+        }
 
-    private void OnCloseClicked()
-    {
-        Close();
+        return false;
     }
 }
 ```
 
-**第 2 步：搭预制体**：Unity 里正常 UGUI 搭建，节点名与脚本里 `BindButton` 的参数一致。
+`HandleBack()` 返回 `true` 表示页面已消费返回事件。
 
-**第 3 步：根节点挂脚本**：把 `ShopPanel` 组件挂到预制体根节点。
-
-**第 4 步（Addressables 模式）**：打开菜单 **`MyUI → Settings & Registration`** → ②区「选择目录…」选中面板所在目录（或直接拖入预制体单片）→ 组名可填（默认 `UIPanels`，不存在自动创建）→ 点注册：自动入组、**地址自动 = 类型名**、重复自动跳过。
-（Resources 兼容模式：预制体放入任意 `Resources/` 目录即可，推荐 `Resources/UIPanel/` 子目录，地址自动 = `UIPanel/{类型名}`，无需注册。）
-
-**第 5 步：打开**：
+### 10.3 Replace
 
 ```csharp
-UIManager.OpenPanel<ShopPanel>(shopData);   // 可选传数据，OnOpen 里接收
+UIManager.OpenPanel<GamePlayPanel>(
+    openMode: UIOpenMode.Replace);
 ```
 
-### 4. 生命周期
+适用场景：
 
-生命周期由框架按固定次序驱动，面板类可选择性覆写（基类全部为空实现，不写即不生效）。
+- 主菜单进入游戏
+- 登录页进入大厅
+- 启动页进入主界面
 
-```
-打开：OnInit（仅新实例）→ OnOpen(data)（每次打开）→ OnShow
-遮挡：OnCover →（遮挡链含全屏面板时）OnPause
-露出：OnReveal → OnResume
-关闭：OnHide → OnClose(pooled) → 入池或 OnDestroyed + 销毁
-驱动：OnTick(dt) 每帧，仅处于打开且未暂停状态的面板收到
-```
+Replace 不会增加返回层级。被替换页面的返回入口会转移给新页面。
 
-| 回调 | 时机 | 典型用途 |
-|---|---|---|
-| `OnInit()` | 实例创建后调用一次；池复用不调用 | 绑定按钮（`BindButton`）、查找控件（`Find<T>`） |
-| `OnOpen(object userData)` | 每次打开（含池复用） | 按传入数据刷新界面 |
-| `OnShow()` | 完全显示（打开动画后） | 与显隐相关的逻辑 |
-| `OnHide()` | 关闭流程开始 | 关闭动画等 |
-| `OnCover()` | 被其它面板遮挡 | 遮挡事实处理 |
-| `OnReveal()` | 重新露出 | 恢复显示相关 |
-| `OnPause()` | 被全屏面板遮挡（逻辑暂停） | 停计时器、动画 |
-| `OnResume()` | 暂停解除 | 恢复逻辑 |
-| `OnClose(bool pooled)` | 面板即将入池或销毁；`pooled=true` 表示入池复用 | 清理临时资源（订阅、协程） |
-| `OnDestroyed()` | 真正销毁 | 最终清理 |
-| `OnTick(float dt)` | 每帧；仅打开且未暂停 | 持续逻辑 |
+## 11. 页面内多级内容
 
-**数据传递示例**：
+MyUI 管理的是顶层面板。页面内部的列表、页签、详情区、侧栏等内容建议保留在同一个面板组件树中，通过普通 View、Controller 或自定义子组件管理。
 
-```csharp
-// 打开时传入
-UIManager.OpenPanel<ResultPanel>(score);
+推荐划分：
 
-// 面板内接收
-protected override void OnOpen(object userData)
-{
-    if (userData == null)
-    {
-        return;
-    }
-
-    int score = (int)userData;
-    ScoreText.text = score.ToString();
-}
+```text
+EquipmentPanel
+  Header
+  CategoryView
+  ItemListView
+  DetailView
 ```
 
-### 5. 配置项（特性与 Inspector，两者等价，Inspector 优先）
+以下情况应拆成独立 `UIPanel`：
 
-| 配置 | `[UIPanel]` 特性 | 预制体 Inspector（UIPanel 组件） | 说明 |
-|---|---|---|---|
-| 层级 | `[UIPanel(UILayer.Popup)]` | 层级下拉 | 所在层（见 §6） |
-| 全屏 | `FullScreen = true` | 全屏勾选 | 打开时其下层面板收到 `OnPause` |
-| 池化 | `Poolable = false` | 池化勾选 | 关闭时是否入池复用 |
-| 返回导航 | `Stackable = false` | 参与返回导航勾选 | 飘字/过场 UI 设为 false |
-| 多实例 | `AllowMulti = true` | （无） | Toast 类；需打开前判定，仅特性 |
-| 地址 | `Address = "..."` | （无） | 覆盖默认类型名地址 |
+- 全屏页面
+- 模态弹窗
+- 可被多个页面复用的详情页
+- 需要独立返回路径的页面
+- 需要独立资源加载与层级控制的页面
 
-优先级：**Inspector > 特性 > 默认值**。两种方式可混用；`AllowMulti` 与 `Address` 因需在打开前判定，仅代码特性可用。
+以下情况不建议拆成全局 Panel：
 
-### 6. 层级（Layer）
+- 同一个页面内的 Tab
+- 列表与详情联动
+- 并排的商店和物品栏
+- 仅用于布局分组的区域
 
-默认 6 层（渲染顺序由低到高、遮挡链按此顺序）：
+## 12. 实例池
 
-| 层 | 典型用途 |
+关闭面板时，`Poolable = true` 的实例会进入池。
+
+默认参数：
+
+| 参数 | 默认值 |
 |---|---|
-| `Background` | 背景层（全屏背景、场景底图） |
-| `Normal` | 主界面（主菜单、游戏主界面） |
-| `Popup` | 弹窗（设置、确认框） |
-| `Guide` | 引导层 |
-| `System` | 常驻系统 UI（HUD、血量、金币） |
-| `Toast` | 飘字（伤害飘字、提示） |
+| 每地址容量 | 3 |
+| 闲置淘汰时间 | 60 秒 |
 
-每层一个独立 Canvas（sortingOrder = 层值 × 100）。
+池化面板注意事项：
 
-#### 扩展层级（修改枚举，共 3 行以内）
+- `OnInit` 不会在复用后再次调用
+- 每次打开都会调用 `OnOpen`
+- 关闭时必须清理事件订阅、协程、定时器和异步请求
+- 打开时应重置列表、滚动位置、选中状态和动画状态
 
-想增加一层，只需在 `UILayer` 枚举中追加成员（框架代码位置：包内 `Runtime/MyUI.Core/UILayer.cs`）：
+## 13. 资源加载
+
+### 13.1 Addressables
+
+默认加载模式。
+
+通过：
+
+```text
+MyUI -> Settings & Registration
+```
+
+选择加载模式和面板资源。
+
+推荐命名：
+
+```text
+类型名 == Prefab 文件名 == Addressables 地址
+```
+
+### 13.2 Resources
+
+在设置中选择 Resources，或将预制体放入：
+
+```text
+Resources/UIPanel/
+```
+
+默认地址：
+
+```text
+UIPanel/{类型名}
+```
+
+### 13.3 自定义加载器
+
+实现 `IAssetLoader`：
 
 ```csharp
-public enum UILayer
+public interface IAssetLoader
 {
-    Background,
-    Normal,
-    Popup,
-    Guide,
-    System,
-    Toast,
-    Trade,          // ← 新增层（示例：交易所）
+    void LoadViewAsync(string address, Action<object, string> onDone);
+    void ReleaseView(object view);
+    string DefaultAddress(Type panelType);
 }
 ```
 
-保存编译后自动生效：
-
-- `UIRoot` 启动时按枚举自动为 `Trade` 创建独立 Canvas（排序 = 6 × 100 = 600，位于 Toast 之上）；
-- 遮挡链自动衔接：`Trade` 层的非全屏面板不暂停下层、全屏面板遮挡至其下所有层；
-- 代码中即可引用：
+启动时传入：
 
 ```csharp
-[UIPanel(UILayer.Trade)]
-public sealed class TradePanel : UIPanel { }
+UIManager.Init(new MyAssetLoader());
 ```
 
-补充说明：
+## 14. 编辑器工具
 
-- **加在末尾最安全**（后续层排序不变）；插在中间同样正确（相对顺序由枚举声明顺序决定）；
-- 每个新层会创建一张 Canvas；不使用则不要挂载面板（空层无渲染成本）；
-- 删除/停用层：不引用它即可（面板不挂入则零开销）；不建议删除枚举定义（历史引用会失效）。
+### Settings & Registration
 
-### 7. 遮挡与暂停
+```text
+MyUI -> Settings & Registration
+```
 
-规则：
+包含：
 
-1. 同层：更晚打开的面板遮挡更早者；
-2. 跨层：仅更高层 **全屏（FullScreen）** 面板构成遮挡源；
-3. 暂停：被遮挡 且 遮挡源存在全屏 → 收到 `OnPause`（含 `OnCover`）；
-4. 恢复：`OnReveal → OnResume`。
+- 加载模式切换
+- Addressables 面板注册
+- 自动创建 `UIPanels` 组
+- 自动设置地址
 
-经验：主界面/游戏主界面标 `FullScreen = true`；弹窗（Popup、非全屏）打开时下层继续运行（如音乐）。
+### UIPanelTester
 
-### 8. 实例池
+挂到场景任意 GameObject：
 
-- **机制**：关闭的面板（`Poolable = true` 且未超容量）不销毁，藏入池；下次打开直接复用（不重新加载、不重建实例，`OnInit` 不再调用）；
-- **容量**：每个面板类型保留最多 3 个闲置实例，超出销毁；闲置超过 60 秒自动销毁；
-- **关闭池**：Inspector 取消「池化」或特性 `Poolable = false`（一次性引导页等）；
-- **验证**：池化面板关闭再打开，Console 不再出现第二次 `OnInit`。
+1. 填写面板类型全名
+2. 进入 Play 模式
+3. 点击 Open
 
-### 9. 导航（返回）
+### Inspector 调试
 
-- 打开新页面时自动把当前顶层记录入返回栈（无需手动 `Push`）；
-- `Stackable = false` 的面板（飘字/过场）不记录；
-- `Back()`：有返回历史时关闭当前顶层；无历史（第一页）时安全无操作。
+选中面板预制体后，可以在 Inspector 中直接执行打开或关闭操作。
 
-### 10. API 参考
+## 15. 测试
+
+打开：
+
+```text
+Window -> General -> Test Runner -> EditMode
+```
+
+运行 `MyUI.Tests.EditMode`。
+
+测试覆盖：
+
+- 加载失败与异常路径
+- 视图挂接与释放
+- 池复用上下文刷新
+- Dispose 清理
+- Push、Overlay、Replace
+- 同层与跨层遮挡
+- `PauseBelow` 暂停规则
+
+## 16. 性能建议
+
+- 层与层之间使用独立 Canvas，跨层刷新不会影响其他层。
+- 同层面板可共享 Canvas 合批。
+- 高频变化区域建议独立成子 Canvas 或拆分到 HUD 层。
+- 页面根节点避免无意义的额外 Canvas。
+- 列表项使用对象池或虚拟列表。
+- 不在每帧查询整个面板树。
+- 关闭页面时取消事件订阅与异步任务。
+
+## 17. 常见问题
+
+### 打开后点击穿透
+
+检查：
+
+- `InputMode` 是否为 `Modal`
+- 面板根节点是否覆盖目标区域
+- Prefab 内部是否错误关闭了关键 Graphic 的 `raycastTarget`
+
+### 页面被上层遮挡但没有暂停
+
+`PauseBelow` 控制逻辑暂停，`InputMode` 只控制输入阻断。需要暂停时设置：
 
 ```csharp
-// ---- 启动（唯一入口：Init，幂等）----
-UIManager.Init();                                   // 启动框架（入口一次；按窗口①配置绑定加载器）
-UIManager.Init(IAssetLoader loader);                // 自定义加载器启动
-UIManager.AssetMode                                 // Addressables（默认）/ Resources（窗口①或代码均可）
-
-// ---- 打开 ----
-UIManager.OpenPanel<T>(object data = null,
-    Action<UIPanel> onOpened = null, Action<string> onFailed = null);
-UIManager.OpenPanel<T>(string address, object data = null, ...);   // 显式地址
-UIManager.OpenPanelAsync<T>(object data = null);                   // Task 版
-
-// ---- 关闭 ----
-panel.Close(bool immediate = false);
-UIManager.ClosePanel(UIPanel panel, bool immediate = false);
-UIManager.ClosePanel(string panelName, bool immediate = false);
-UIManager.ClosePanel<T>(bool immediate = false);
-UIManager.CloseAll(bool immediate = false);   // immediate=true 跳过关闭延迟
-
-// ---- 查询 ----
-UIManager.GetPanel<T>();      // 单实例语义，未打开返回 null
-UIManager.IsOpen<T>();
-
-// ---- 导航 ----
-UIManager.Back();             // 有历史才关当前页
-
-// ---- 事件 ----
-UIManager.Instance.PanelOpened     += r => { };             // (PanelRecord)
-UIManager.Instance.PanelClosed     += (r, pooled) => { };   // (PanelRecord, bool)
-UIManager.Instance.PanelLoadFailed += (name, error) => { };
+PauseBelow = UIPauseBelowMode.Always
 ```
 
-### 11. 资源加载
+### Back 没有关闭当前页面
 
-- **加载模式**：菜单 `MyUI → Settings & Registration` ①区勾选 Addressables（默认）/ Resources → 保存即应用（自动重编译，秒级）；也可代码指定 `UIManager.AssetMode`；
-- **默认 Addressables**：`Init()` 自动选用 `AddressablesPanelLoader`（程序集缺失时回退 Resources 并打警告）；
-- **回退**：`ResourcesPanelLoader`（地址 = 类型名 + `UIPanel/` 前缀，预制体放任意 `Resources/` 目录）；
-- **自定义**：实现 `IAssetLoader`（`LoadViewAsync` / `ReleaseView` / `DefaultAddress`），`Init(myLoader)` 传入；
-- **面板注册**：菜单 `MyUI → Settings & Registration` ②区：选目录（或单片拖入）→ 自动建组（组名可填，默认 `UIPanels`）→ 自动入组、地址自动=类型名、重复跳过（见下文规范）。
+可能原因：
 
-#### Addressables 组与命名规范
+- 当前页面是 Overlay，没有返回入口
+- 页面不是 Push 打开
+- 页面实现了 `IUINavigationHandler` 并消费了返回事件
+- 当前是根页面，没有可返回历史
 
-**组（Group）**
+### Addressables 找不到面板
 
-- 面板统一放入名为 **`UIPanels`** 的专用组（注册菜单默认写入该组；手工建组时取同名）；
-- 不要将面板放入 `Built In Data`（内建数据组，用于场景列表等内建资源）与 `Default Local Group`（默认空组）之外的无关分组，避免打包/检索混乱；
-- 同一组内可共享打包设置（如同时打 AssetBundle 或不打）。
+检查：
 
-**地址（Address）**
+- 类型名、Prefab 名、地址是否一致
+- 是否已加入 `UIPanels` 组
+- 是否通过设置窗口完成注册
+- 是否使用了错误的显式地址
 
-- **地址 = 面板类型名**（如 `ShopPanel`）。框架默认地址约定（`DefaultAddress`）即类型名；
-- 地址与类名不一致会导致加载失败：Console 报 `InvalidKeyException: No Location found for Key=...`；
-- 例外：确需自定义地址时，用 `[UIPanel(Address = "...")]`（该面板固定用）或 `OpenPanel<T>("地址")`（仅本次调用）。
+### 面板复用时状态残留
 
-**命名三统一**（强烈建议）
+在 `OnOpen` 中重置页面状态，在 `OnClose` 中释放事件、协程和临时对象。
 
+## 18. 实现原理
+
+### 18.1 分层
+
+```text
+MyUI.Core
+  <- IAssetLoader
+  <- IUIPanelFactory
+  <- IUIPanelView
+
+MyUI.Runtime
+  -> UIManager
+  -> UIPanel
+  -> UIRoot
 ```
-类型名 == 预制体文件名 == Addressables 地址
-示例：ShopPanel.cs / ShopPanel.prefab / 地址 ShopPanel
+
+Core 不直接引用 Unity 对象，因此可以在 EditMode 中使用假加载器与假视图执行测试。
+
+### 18.2 面板记录
+
+每个打开请求都有独立的 `PanelRecord`：
+
+- `SerialId`
+- `PanelType`
+- `PanelName`
+- `Address`
+- `Layer`
+- `FullScreen`
+- `InputMode`
+- `PauseBelow`
+- `OpenMode`
+- `State`
+- `Covered`
+- `Paused`
+
+### 18.3 打开流程
+
+```text
+查重
+-> 创建 PanelRecord
+-> 复用池实例或异步加载
+-> AttachView
+-> 应用层级与行为配置
+-> 拉伸全屏节点
+-> 创建模态阻断器
+-> RegisterNavigation
+-> OnInit / OnOpen / OnShow
+-> Replace 收尾
+-> RefreshCoverage
+-> 派发事件
 ```
 
-三统一时 `OpenPanel<T>()` 无需任何额外参数、零配置；破坏任一环都会造成加载失败或额外传址。
+### 18.4 关闭流程
 
-**标签**（可选）
+```text
+OnHide
+-> OnClose(pooled)
+-> 入池或 OnDestroyed
+-> 移除记录
+-> 清理导航入口
+-> RefreshCoverage
+-> 派发关闭事件
+```
 
-组内可为面板添加标签（如 `ui`、`panel`）用于批量构建设置，非必需。
+### 18.5 遮挡计算
 
-#### Resources 模式（不使用 Addressables）
+每次面板状态变化后统一刷新：
 
-不引入 Addressables 时，框架以 Resources 兼容模式运行，使用成本与约定目录方案一致：
+- 同层按打开顺序判断覆盖
+- 跨层按 `UILayerOrder` 判断覆盖
+- 只有覆盖型面板形成遮挡
+- `PauseBelow` 决定是否触发 `OnPause`
 
-- **触发方式**（任一即可）：
-  1. 窗口勾选：`MyUI → Settings & Registration` ①区选「Resources」→ 保存并应用（推荐）；
-  2. 项目不安装 Addressables 包 —— `Init()` 自动回退并打印一次警告；
-  3. 已安装但用代码指定：`UIManager.AssetMode = UIAssetMode.Resources;`（Init 前设置）；
-  4. `UIManager.Init(new ResourcesPanelLoader());`（显式传入）。
-- **资源放置**：预制体放入任意名为 `Resources` 的目录（如 `Assets/Resources/`）；约定子目录 `UIPanel/` 与其对齐（地址 `UIPanel/{类型名}`）；
-- **寻址**：`OpenPanel<T>()` 通过 `Resources.Load("UIPanel/{类型名}")` 同步加载（无需组、无需注册、无需配置资产）；
-- **注意事项**：Resources 目录内容会全部打入安装包（无法按需/分包/远程），同步加载适合原型与小项目；示例 Demo 即此模式。
+### 18.6 导航记账
 
-两种模式可共存：面板地址约定相同（类型名），切换加载器后资源位置对应调整即可。
+Push 模式在面板成功打开后登记父页面：
 
-### 12. 调试工具
+```text
+当前页 -> 新页面
+```
 
-- **UIPanelTester**：场景中任意 GameObject 挂该组件，填面板类型全名（如 `MyUI.Examples.MainMenuPanel`），Play 中一键打开；
-- **Inspector 调试按钮**：选中面板预制体，Inspector 顶部有打开/关闭按钮（编辑模式可预览生命周期流程）。
+返回时关闭当前页面并恢复父页面。
 
-### 13. 单元测试
+Replace 模式直接把被替换页面的父入口转移给新页面。
 
-`Window → General → Test Runner → EditMode → Run All`：20 条用例覆盖打开/关闭序列、单实例聚焦、双开合并、加载中取消、延迟关闭、遮挡/暂停翻转、池复用（含 SerialId 刷新）、池容量/过期、导航栈、CloseAll 逆序、失败路径、多实例。
+Overlay 不登记导航入口。
 
-### 14. 性能考虑
+## 19. 扩展点
 
-- 每层独立 Canvas：跨层的面板互不影响彼此的渲染重建；同层面板仍可合批；
-- 高频刷新区域（如常驻 HUD）建议放置于 System 层，或局部包一层子 Canvas（勾 Override Sorting），避免频繁更新拖累整层渲染；
-- 常规面板根保持 Panel（如无特殊需求，避免为面板额外挂 Canvas 拆散合批）。
+### 自定义加载器
 
-### 15. 常见问题
+实现 `IAssetLoader` 后通过 `Init(loader)` 注入。
 
-1. **缺字/文字警告**：烘焙字体字符集不含「」等字符时 TMP 会警告。方案：文案避开未收录字符，或在烘焙字符集文件中追加。
-2. **文字挡住点击**：TMP 的 `raycastTarget` 记得关闭（`Bg` 等全屏色块同理）。
-3. **面板根布局**：根节点使用 RectTransform（框架会自动修复普通 Transform，但排版基准以根为准）。
-4. **TMP Essentials 提示**：新项目若提示导入 TMP 基础资源，执行 `Window → TextMeshPro → Import TMP Essential Resources`。
-5. **包更新**：git 安装方式下，Package Manager 中该包显示为远程源，重新拉取/切换版本在 Package Manager 中进行；开发调试可改用 embedded（拷贝包目录至项目 `Packages/` 下）。
-6. **`InvalidKeyException: No Location found for Key=...`**：Addressables 找不到该地址——检查面板的地址是否等于类型名（三统一，见 §11），是否已入组（`UIPanels`），以及是否忘了执行注册。
+### 自定义面板工厂
 
----
+实现 `IUIPanelFactory` 可接管：
 
-## 第二部分：实现原理
+- 视图挂接
+- 激活状态
+- 层级置顶
+- 运行时上下文刷新
+- 销毁与释放
 
-### 1. 分层动机
+### 自定义层级
 
-Core（纯 C#）→ Runtime（Unity 胶水）→ Loaders（可选）：Core 只通过 `IAssetLoader` / `IUIPanelFactory` / `IUIPanelView` 与世界交互，可单测、可换、零 Unity 依赖。
+修改 `UILayer` 并同步更新 `UILayerOrder`。
 
-### 2. 核心数据结构（UIManagerCore）
+## 20. 边界
 
-`_all`（激活记录）、`_singles`（单实例索引）、`_bySerial`（serialId 索引）、`_pool`（地址→空闲实例）、`_closing`（延迟关闭队列）、三把尺子（`_nextSerialId` / `_openOrder` / `_time`）。
-
-### 3. 打开流程
-
-查重（Open→聚焦 / 加载中→合并 / Closing→取消关闭重开）→ 建记录 → 池优先复用（`RefreshViewContext` 刷新 SerialId）→ 加载 → `AttachView`（应用 Inspector 配置：Layer/FullScreen/Poolable 覆盖）→ `OnInit/OnOpen/OnShow` → 完成（遮挡刷新 + 事件 + 回调）。
-
-### 4. 关闭流程
-
-Loading→取消（记录保留至资源释放）；Open→OnHide→（延迟销毁可选）→OnClose(pooled)→入池或销毁→导航清理→遮挡刷新→事件。
-
-### 5. 遮挡 / 暂停
-
-单点 `RefreshCoverage` 全量重算，仅在状态翻转时回调（同层按 OpenOrder；跨层仅 FullScreen 构成遮挡源）。
-
-### 6. 池
-
-入池（容量 3/地址）、复用（同一视图实例，SerialId 经 `RefreshViewContext` 刷新）、过期淘汰（60s）。
-
-### 7. 导航栈
-
-打开自动 Push（`Stackable=false` 除外；Inspector 取消勾选经 `OnViewReady` 撤销）；Back = 有历史才关当前顶层；关闭自动清理栈记录。
-
-### 8. 已知边界
-
-关闭动画（延迟销毁窗口由面板自播）；未提供预加载 API；面板间通信走直接调用与框架事件；池参数、延迟销毁与过期时间为 Core 默认值（可经门面扩展为配置）。
+- MyUI 负责顶层面板管理，不强制页面内部必须使用统一导航栈。
+- 页面内部的多级内容推荐由页面自身组织。
+- 需要独立返回路径、独立资源或模态行为的内容应拆成独立 `UIPanel`。
+- 框架不内置业务数据 Model、Inventory、Equipment 或服务器同步逻辑。
+- 业务数据应由项目自己的 Model、Service、Repository 或 Architecture 层维护。

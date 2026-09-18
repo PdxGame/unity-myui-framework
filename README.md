@@ -1,79 +1,337 @@
-# MyUI Framework (UPM 包)
+# MyUI Framework
 
-轻量 Unity UI 管理框架（Unity 2022.3+，UGUI + TextMeshPro）。
+MyUI 是一个面向 Unity 2022.3+ 的轻量 UI 管理框架，基于 UGUI 与 TextMeshPro，负责顶层面板的加载、生命周期、层级、输入阻断、逻辑暂停、实例池和返回导航。
 
-- 核心 **纯 C#**（零 UnityEngine 依赖，20 条 EditMode 单测）；生命周期 / 固定层级 / 遮挡回调（OnCover/OnPause）/ 实例池 / 自动返回导航；
-- 固定层级结构，每层独立 Canvas：跨层面板互不干扰，同层内可合批；
-- **默认 Addressables 加载**（可选程序集，缺失自动回退 Resources）。
+框架核心为纯 C# 状态机，不依赖 UnityEngine；Unity Runtime、Addressables 加载器与编辑器工具分别通过独立程序集接入。
+
+## 功能概览
+
+- 固定层级与独立 Canvas：`Background / Normal / HUD / Popup / Guide / System / Toast`
+- 面板生命周期：初始化、打开、显示、遮挡、暂停、恢复、关闭、销毁与实例池复用
+- 全屏布局：`FullScreen = true` 时自动拉伸面板根节点
+- 输入阻断：`InputMode` 控制是否创建全屏模态射线阻断器
+- 逻辑暂停：`PauseBelow` 独立控制是否暂停下层面板
+- 导航策略：`Overlay / Push / Replace`
+- 数据传递：打开面板时通过 `userData` 传入，面板在 `OnOpen` 中接收
+- 资源加载：默认 Addressables，可切换 Resources 或自定义 `IAssetLoader`
+- 回归测试：核心状态机提供 EditMode 测试
 
 ## 安装
 
-**方式 A：UPM（推荐）** —— 你的项目 `Window → Package Manager → ＋ → Add package from git URL…`：
+### Unity Package Manager
 
-```
+在 Unity 中打开：
+
+`Window → Package Manager → + → Add package from git URL...`
+
+输入：
+
+```text
 https://github.com/PdxGame/unity-myui-framework.git
 ```
 
-依赖（ugui / textmeshpro / addressables）会自动安装。
+### 本地拷贝
 
-**分支**：`main` = 使用稳定版（无测试/开发材料）；`dev` = 开发者版（含单元测试与源码分析报告，见 `Docs/MyUI-开发者指南.md`）。
+也可以将以下内容复制到项目的 `Packages` 或 `Assets` 目录：
 
-**方式 B：拷贝** —— 把 `Runtime/`、`Editor/`、`Tests/` 与 `package.json` 拷进你项目任意目录（或 `Assets/` 下），去除 `Samples~`。
+```text
+package.json
+Runtime/
+Editor/
+Tests/
+```
 
-## 快速体验 Demo（1 分钟）
+复制到 `Assets` 时应删除 `Samples~` 之外的包管理文件，并确保目录名不影响项目自身的程序集结构。
 
-1. 安装包后，Package Manager 里找到 **MyUI Framework** → **Samples → MyUI Demo → Import**；
-2. 导入完成后 **新建一个空场景**（File → New Scene → Basic，保存）；
-3. 点 **Play**：自动弹出主菜单 → 开始游戏 → 返回 → 设置 → 关闭 → 退出。
+## 快速开始
 
-> 启动 = 入口处一行 `UIManager.Init()`（唯一启动方式，幂等；流程：创建 UI 根、自动创建 EventSystem、绑定加载器）。
-> Sample 附带的 Demo 启动器（`RuntimeInitializeOnLoadMethod`）只是**示例入口**（负责演示打开主菜单），正式项目在自己入口调用 Init() 即可。
-> Demo 走 Resources 兼容模式（导入的 Sample 位于 `Resources/UIPanel/` 子目录，地址 = `UIPanel/{类型名}`），克隆即跑零配置。
-> Demo 文案为英文，使用 TMP 默认字体（LiberationSans SDF）——若编辑器提示导入 TMP Essentials，执行 `Window → TextMeshPro → Import TMP Essential Resources`（TMP 标准流程一次即可）。
+### 1. 初始化
 
-## 编辑器菜单（MyUI）
-
-菜单 **`MyUI → Settings & Registration`** 打开管理窗口：
-
-- **① 加载模式**：勾选 Addressables（默认）/ Resources → 「保存并应用模式」即生效（自动重编译，秒级），无需改任何源码；
-- **② Addressables 面板注册**：选一个目录（或直接拖入预制体，可一次拖多个）→ 组名可填（默认 `UIPanels`，不存在自动创建）→ 自动入组、**地址自动 = 类型名**、重复自动跳过。
-
-## 做一个新页面（5 步）
-
-1. 写一个类继承 `UIPanel`（配置在 `[UIPanel(...)]` 特性或预制体 Inspector 的 UIPanel 组件上选：层级/全屏/池化/入栈）；
-2. Unity 里搭同名预制体，根节点挂上这个类；
-3. 放进你自己定的目录；
-4. 生产（Addressables）：菜单 `MyUI → Settings & Registration` → ②区选该目录（或拖入预制体）→「注册」；地址自动=类型名；
-5. 代码里：
+在项目启动入口调用一次 `UIManager.Init()`：
 
 ```csharp
 using MyUI.Runtime;
 
-UIManager.Init();                       // 启动一次（入口处；幂等）
-UIManager.OpenPanel<MyPagePanel>(数据);  // 打开（返回路径自动记录）
-panel.Close();                           // 关闭
-UIManager.Back();                        // 返回（有历史时才关当前页）
-UIManager.CloseAll();                    // 清场
+public sealed class GameBootstrap : MonoBehaviour
+{
+    private void Awake()
+    {
+        UIManager.Init();
+    }
+}
 ```
 
-加载模式由窗口①配置（`MyUI → Settings & Registration`，缺配置=Addressables）；`UIManager.AssetMode` 可代码覆盖；`Init(loader)` 可传入自定义加载器。
+`Init()` 会创建常驻 UI 根、EventSystem 和默认加载器。重复调用是幂等的。
 
-## 目录结构
+### 2. 创建面板
 
+面板类继承 `UIPanel`，通过 `[UIPanel]` 声明层级与行为：
+
+```csharp
+using MyUI.Core;
+using MyUI.Runtime;
+
+[UIPanel(
+    UILayer.Normal,
+    FullScreen = true,
+    OpenMode = UIOpenMode.Push)]
+public sealed class EquipmentPanel : UIPanel
+{
+    protected override void OnInit()
+    {
+        BindButton("Btn_Close", Close);
+    }
+}
 ```
-├─ package.json            包描述（UPM 元数据 + 依赖 + Sample 清单）
-├─ Runtime/
-│   ├─ MyUI.Core/          纯 C# 状态机：打开/关闭/合并/取消/遮挡/暂停/池/导航
-│   ├─ MyUI.Runtime/       UIPanel 基类、UIManager 门面、UIRoot 分层、加载器、Tester
-│   └─ MyUI.Loaders.Addressables/  Addressables 加载器（可选程序集，默认加载方式）
-├─ Editor/MyUI.Editor/     Inspector 调试按钮、面板注册菜单
-├─ Samples~/Demo/          Demo：面板脚本（Scripts/）+ 预制体（Resources/UIPanel/，TMP 默认字体）
-└─ Tests/                  单元测试（开发者在 dev 分支使用）
-Docs/                       使用手册与实现原理（开发者另见 dev 分支指南）
+
+预制体根节点挂载该脚本，预制体名称与地址保持和类型名一致：
+
+```text
+EquipmentPanel.cs
+EquipmentPanel.prefab
+Addressables Address = EquipmentPanel
 ```
 
-## 文档与许可
+### 3. 打开与关闭
 
-- `Docs/MyUI-使用手册与实现原理.md`：完整使用手册（API/生命周期/配置/性能）与实现原理；
-- `Docs/MyUI-开发者指南.md`（dev 分支）：单元测试、结构导览、扩展点与发布流程；
-- 框架代码 **MIT**；Demo 使用 TMP 内置默认字体（无第三方字体资产，包体积保持纯脚本级）。
+```csharp
+UIManager.OpenPanel<EquipmentPanel>();
+UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
+{
+    ItemInstanceId = itemId,
+    Source = ItemSource.Equipment,
+});
+
+UIManager.Back();
+UIManager.ClosePanel<EquipmentPanel>();
+UIManager.CloseAll();
+```
+
+面板内部直接调用 `Close()` 即可关闭当前实例。
+
+## 面板配置
+
+`[UIPanel]` 与预制体 Inspector 均可配置面板。特性提供默认值，Inspector 可覆盖或收紧配置。
+
+| 配置 | 取值 | 说明 |
+|---|---|---|
+| `Layer` | `UILayer` | 面板所在层级 |
+| `FullScreen` | `true / false` | 是否全屏布局；打开时自动拉伸根 `RectTransform` |
+| `InputMode` | `Inherit / None / Self / Modal` | 输入阻断方式；`Modal` 自动创建全屏透明阻断器 |
+| `PauseBelow` | `Inherit / Never / Always` | 是否暂停被其覆盖的下层面板 |
+| `OpenMode` | `Inherit / Overlay / Push / Replace` | 打开策略与返回层级规则 |
+| `Poolable` | `true / false` | 关闭后是否进入实例池 |
+| `Stackable` | `true / false` | 兼容返回配置；主要配合 `OpenMode=Push` |
+| `AllowMulti` | `true / false` | 是否允许同类型多实例，仅特性配置 |
+| `Address` | `string` | 覆盖默认资源地址，仅特性配置 |
+
+### 默认继承规则
+
+未显式配置时：
+
+```text
+InputMode   Inherit -> FullScreen ? Modal : Self
+PauseBelow  Inherit -> FullScreen ? Always : Never
+OpenMode    Inherit -> Stackable ? Push : Overlay
+```
+
+`FullScreen` 只负责布局。需要全屏但不停逻辑时，设置 `PauseBelow = Never`；需要窗口尺寸但阻断输入时，设置 `InputMode = Modal`。
+
+### 常用组合
+
+```csharp
+// 全屏页面：全屏布局、默认模态、默认暂停下层
+[UIPanel(UILayer.Normal, FullScreen = true)]
+
+// 窗口弹窗：按 Prefab 尺寸显示，阻断输入但不暂停下层
+[UIPanel(
+    UILayer.Popup,
+    InputMode = UIInputMode.Modal,
+    PauseBelow = UIPauseBelowMode.Never)]
+
+// 常驻 HUD：不阻断、不暂停、不进入返回历史
+[UIPanel(
+    UILayer.HUD,
+    InputMode = UIInputMode.None,
+    PauseBelow = UIPauseBelowMode.Never,
+    OpenMode = UIOpenMode.Overlay)]
+
+// Toast：不阻断、不暂停、no navigation
+[UIPanel(
+    UILayer.Toast,
+    InputMode = UIInputMode.None,
+    PauseBelow = UIPauseBelowMode.Never,
+    OpenMode = UIOpenMode.Overlay,
+    AllowMulti = true,
+    Stackable = false)]
+```
+
+### 单次打开覆盖
+
+需要临时改变行为时，可在打开时传入覆盖参数：
+
+```csharp
+UIManager.OpenPanel<ItemDetailPanel>(
+    data: openData,
+    inputMode: UIInputMode.Modal,
+    pauseBelow: UIPauseBelowMode.Never,
+    openMode: UIOpenMode.Overlay);
+```
+
+## 层级
+
+渲染顺序由 `UILayerOrder` 定义：
+
+```text
+Background
+Normal
+HUD
+Popup
+Guide
+System
+Toast
+```
+
+推荐用途：
+
+| 层级 | 用途 |
+|---|---|
+| `Background` | 场景底图、背景 |
+| `Normal` | 主菜单、装备页、背包页等页面 |
+| `HUD` | 金币、血量、任务追踪等常驻信息 |
+| `Popup` | 设置、确认框、商店窗口 |
+| `Guide` | 新手引导 |
+| `System` | 加载遮罩、断线提示、强制更新 |
+| `Toast` | 飘字与轻提示 |
+
+每层拥有独立 Canvas。跨层渲染顺序由 Canvas Sorting Order 控制，同层面板按打开顺序排列。
+
+## 生命周期
+
+```text
+OnInit
+  -> OnOpen(userData)
+  -> OnShow
+  -> OnCover / OnReveal
+  -> OnPause / OnResume
+  -> OnTick
+  -> OnHide
+  -> OnClose(pooled)
+  -> OnDestroyed
+```
+
+关键规则：
+
+- `OnInit` 只在新实例创建后调用一次，池复用不会重复调用。
+- `OnOpen` 每次打开都会调用，适合接收 `userData` 和刷新界面。
+- `OnCover` 表示面板被其他覆盖型面板遮挡。
+- `OnPause` 表示遮挡源声明了 `PauseBelow`，适合停止计时器、动画和逻辑更新。
+- `OnTick` 只会在面板处于打开且未暂停状态时调用。
+- `OnClose(pooled)` 中清理订阅、协程、事件和临时资源。
+
+## 导航
+
+### Push
+
+保留当前页面，并登记一条返回路径：
+
+```csharp
+UIManager.OpenPanel<EquipmentPanel>(
+    openMode: UIOpenMode.Push);
+```
+
+### Overlay
+
+覆盖在当前页面之上，不增加返回层级：
+
+```csharp
+UIManager.OpenPanel<SettingsPanel>(
+    openMode: UIOpenMode.Overlay);
+```
+
+Overlay 不会因为调用 `Back()` 而自动关闭；需要在面板内部关闭，或实现 `IUINavigationHandler` 处理返回。
+
+### Replace
+
+新面板打开成功后替换当前可返回页面，不增加返回层级：
+
+```csharp
+UIManager.OpenPanel<GamePlayPanel>(
+    openMode: UIOpenMode.Replace);
+```
+
+适合主菜单进入游戏、登录页进入大厅等页面替换场景。
+
+## 实例池
+
+- `Poolable = true` 的面板关闭后进入实例池。
+- 下次打开优先复用实例，不重复加载资源，也不会再次调用 `OnInit`。
+- 默认每个地址最多缓存 3 个闲置实例。
+- 默认闲置超过 60 秒后销毁。
+- 临时面板、一次性引导或含大量临时状态的页面可设置 `Poolable = false`。
+
+## 资源加载
+
+### Addressables
+
+默认使用 Addressables。打开 `MyUI → Settings & Registration`：
+
+1. 加载模式选择 `Addressables`。
+2. 选择面板目录或拖入预制体。
+3. 注册后，地址自动使用面板类型名。
+
+建议保持一致：
+
+```text
+类型名 == Prefab 文件名 == Addressables 地址
+```
+
+### Resources
+
+在窗口中选择 `Resources`，或将预制体放入 `Resources/UIPanel/`。
+
+默认地址规则：
+
+```text
+UIPanel/{类型名}
+```
+
+### 自定义加载器
+
+实现 `IAssetLoader` 后传入初始化入口：
+
+```csharp
+UIManager.Init(new MyCustomAssetLoader());
+```
+
+## 示例与测试
+
+### Demo
+
+通过 Package Manager 导入 `MyUI Demo` 示例，打开任意空场景后运行。示例包含主菜单、游戏页面和设置弹窗。
+
+### EditMode 测试
+
+打开：
+
+`Window → General → Test Runner → EditMode`
+
+运行 `MyUI.Tests.EditMode`。当前测试覆盖：
+
+- 加载异常与失败回调
+- 视图挂接异常与原始实例释放
+- 实例池复用上下文刷新
+- Dispose 统一释放
+- Push、Overlay、Replace 导航
+- 同层与跨层遮挡、暂停规则
+
+## 文档
+
+- [使用手册与实现原理](Docs/MyUI-使用手册与实现原理.md)
+- [UI 行为配置](#面板配置)
+- [导航策略](#导航)
+- [资源加载](#资源加载)
+
+## License
+
+MIT
