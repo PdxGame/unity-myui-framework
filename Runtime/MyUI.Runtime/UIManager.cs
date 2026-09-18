@@ -156,6 +156,44 @@ namespace MyUI.Runtime
             };
         }
 
+        /// <summary>Release all panels and optionally destroy the persistent UI root.</summary>
+        public static void Shutdown(bool destroyRoot = true)
+        {
+            UIManager instance = _instance;
+            if (instance == null)
+            {
+                if (destroyRoot)
+                {
+                    UIRoot.DestroyInstance();
+                }
+                return;
+            }
+
+            _instance = null;
+            instance._core?.Dispose();
+            if (instance != null && instance.gameObject != null)
+            {
+                Destroy(instance.gameObject);
+            }
+
+            if (destroyRoot)
+            {
+                UIRoot.DestroyInstance();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                _instance = null;
+            }
+
+            _core?.Dispose();
+            _core = null;
+            _loader = null;
+        }
+
         private void Update()
         {
             if (_core != null)
@@ -185,32 +223,72 @@ namespace MyUI.Runtime
                 throw new InvalidOperationException("面板视图缺少 UIPanel 组件: " + record.PanelName);
             }
 
-            // Inspector 可视化配置优先于代码特性/默认值（加载后立即生效）
-            record.Layer = panel.inspectorLayer;
-            record.FullScreen = panel.inspectorFullScreen;
-            record.Poolable = panel.inspectorPoolable;
+            ApplyPanelConfiguration(record, panel);
+            return panel;
+        }
 
-            // 按（可能被覆盖的）层级挂载到对应层 Canvas
-            RectTransform layerRoot = UIRoot.Instance != null ? UIRoot.Instance.GetLayerRoot(record.Layer) : null;
-            if (layerRoot != null)
+        private static void ApplyPanelConfiguration(PanelRecord record, UIPanel panel)
+        {
+            // 特性值作为基线；Inspector 的非默认选择可以覆盖 / 收紧它。
+            // 这里不能把默认的 Normal/false/true 无条件写回，否则旧预制体会吞掉 [UIPanel] 声明。
+            if (panel.inspectorLayer != UILayer.Normal || record.Layer == UILayer.Normal)
             {
-                go.transform.SetParent(layerRoot, false);
+                record.Layer = panel.inspectorLayer;
             }
+
+            record.FullScreen = record.FullScreen || panel.inspectorFullScreen;
+            if (panel.inspectorInputMode != UIInputMode.Inherit)
+            {
+                record.InputMode = panel.inspectorInputMode;
+            }
+
+            if (panel.inspectorPauseBelow != UIPauseBelowMode.Inherit)
+            {
+                record.PauseBelow = panel.inspectorPauseBelow;
+            }
+
+            if (panel.inspectorOpenMode != UIOpenMode.Inherit)
+            {
+                record.OpenMode = panel.inspectorOpenMode;
+            }
+
+            record.Poolable = record.Poolable && panel.inspectorPoolable;
+            record.Stackable = record.Stackable && panel.inspectorStackable;
+
+            RectTransform layerRoot = UIRoot.Instance != null
+                ? UIRoot.Instance.GetLayerRoot(record.Layer)
+                : null;
+            if (layerRoot != null && panel.transform.parent != layerRoot)
+            {
+                panel.transform.SetParent(layerRoot, false);
+            }
+
+            if (record.FullScreen)
+            {
+                StretchToLayer(panel.RectTransform);
+            }
+
+            UIModalBlocker.Apply(panel.RectTransform, record.EffectiveInputMode == UIInputMode.Modal);
 
             panel.SerialId = record.SerialId;
             panel.PanelName = record.PanelName;
             panel.Layer = record.Layer;
-            panel.Manager = this;
-            return panel;
+            panel.Manager = _instance;
+        }
+
+        private static void StretchToLayer(RectTransform rectTransform)
+        {
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            rectTransform.anchoredPosition = Vector2.zero;
+            rectTransform.sizeDelta = Vector2.zero;
         }
 
         void IUIPanelFactory.OnViewReady(IUIPanelView view, PanelRecord record)
         {
-            // 视图就绪（新加载 / 池复用都经过这里）：Inspector 取消勾选「参与返回导航」→ 撤销本次入栈
-            if (view is UIPanel panel)
-            {
-                ConfirmOrUndoPendingStack(_core, panel.inspectorStackable);
-            }
+            // Inspector 配置已在 ApplyPanelConfiguration 中写入记录；
+            // 导航由 Core 在成功打开路径上统一登记，避免加载失败留下过期历史。
         }
 
         void IUIPanelFactory.DestroyView(IUIPanelView view)
@@ -218,6 +296,14 @@ namespace MyUI.Runtime
             if (view is UIPanel panel && panel.gameObject != null && _loader != null)
             {
                 _loader.ReleaseView(panel.gameObject);
+            }
+        }
+
+        void IUIPanelFactory.ReleaseViewInstance(object viewInstance)
+        {
+            if (viewInstance != null && _loader != null)
+            {
+                _loader.ReleaseView(viewInstance);
             }
         }
 
@@ -241,10 +327,7 @@ namespace MyUI.Runtime
         {
             if (view is UIPanel panel)
             {
-                panel.SerialId = record.SerialId;
-                panel.PanelName = record.PanelName;
-                panel.Layer = record.Layer;
-                panel.Manager = this;
+                ApplyPanelConfiguration(record, panel);
             }
         }
 
@@ -253,18 +336,24 @@ namespace MyUI.Runtime
         /// <summary>
         /// 打开面板（泛型版）。data 会原样传给 UIPanel.OnOpen。
         /// onOpened / onFailed 只回调一次；单实例重复打开以现有实例聚焦回调。
-        /// 面板声明来自 [UIPanel] 特性（Layer / FullScreen / AllowMulti / Poolable / Address），
+        /// 面板声明来自 [UIPanel] 特性（Layer / FullScreen / InputMode / PauseBelow / OpenMode 等），
         /// 未标注时按默认值（Normal 层、单实例、可入池）。
         /// </summary>
         public static void OpenPanel<T>(object data = null,
-            Action<UIPanel> onOpened = null, Action<string> onFailed = null) where T : UIPanel
+            Action<UIPanel> onOpened = null, Action<string> onFailed = null,
+            UIInputMode? inputMode = null,
+            UIPauseBelowMode? pauseBelow = null,
+            UIOpenMode? openMode = null) where T : UIPanel
         {
             UIManager instance = RequireInstance();
             UIPanelAttribute attr = ResolveAttribute(typeof(T));
-            RememberCurrentTop(instance, attr.Stackable); // 自动记返回路径（飘字/过场 UI 标记 Stackable=false 不入栈）
+            UIInputMode resolvedInputMode = inputMode ?? attr.InputMode;
+            UIPauseBelowMode resolvedPauseBelow = pauseBelow ?? attr.PauseBelow;
+            UIOpenMode resolvedOpenMode = openMode ?? attr.OpenMode;
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, null),
-                attr.Layer, attr.FullScreen, attr.AllowMulti, attr.Poolable, data,
+                attr.Layer, attr.FullScreen, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
+                attr.AllowMulti, attr.Poolable, data,
                 (view, error) =>
                 {
                     if (error != null)
@@ -275,42 +364,15 @@ namespace MyUI.Runtime
                     {
                         onOpened?.Invoke(view as UIPanel);
                     }
-                });
+                },
+                stackable: attr.Stackable);
         }
 
-        /// <summary>打开前自动把当前顶层面板记入导航栈（stackable=false 的面板不参与返回导航）。</summary>
-        private static int _pendingStackSerial = -1;
-
-        private static void RememberCurrentTop(UIManager instance, bool stackable)
+        /// <summary>保留旧三参数签名，兼容反射调用与既有编译代码。</summary>
+        public static void OpenPanel<T>(object data, Action<UIPanel> onOpened, Action<string> onFailed)
+            where T : UIPanel
         {
-            _pendingStackSerial = -1;
-            if (!stackable)
-            {
-                return; // 飘字/加载条等临时 UI：不记录返回路径
-            }
-
-            int top = instance._core.GetTopOpenSerialId();
-            if (top >= 0)
-            {
-                instance._core.Navigation.Push(top);
-                _pendingStackSerial = top; // 记录待确认入栈的实例（供 Inspector 撤销）
-            }
-        }
-
-        /// <summary>AttachView 后调用：若 Inspector 取消勾选"参与返回导航"，撤销本次入栈。</summary>
-        private static void ConfirmOrUndoPendingStack(UIManagerCore core, bool inspectorStackable)
-        {
-            if (inspectorStackable)
-            {
-                _pendingStackSerial = -1;
-                return;
-            }
-
-            if (_pendingStackSerial >= 0)
-            {
-                core.Navigation.Remove(_pendingStackSerial); // Inspector 关闭：撤销本次记录
-                _pendingStackSerial = -1;
-            }
+            OpenPanel<T>(data, onOpened, onFailed, null, null, null);
         }
 
         /// <summary>
@@ -318,14 +380,20 @@ namespace MyUI.Runtime
         /// 不被默认约定 "UIPanel/{TypeName}" 限制。其余语义同泛型版。
         /// </summary>
         public static void OpenPanel<T>(string address, object data = null,
-            Action<UIPanel> onOpened = null, Action<string> onFailed = null) where T : UIPanel
+            Action<UIPanel> onOpened = null, Action<string> onFailed = null,
+            UIInputMode? inputMode = null,
+            UIPauseBelowMode? pauseBelow = null,
+            UIOpenMode? openMode = null) where T : UIPanel
         {
             UIManager instance = RequireInstance();
             UIPanelAttribute attr = ResolveAttribute(typeof(T));
-            RememberCurrentTop(instance, attr.Stackable); // 自动记返回路径（Stackable=false 不入栈）
+            UIInputMode resolvedInputMode = inputMode ?? attr.InputMode;
+            UIPauseBelowMode resolvedPauseBelow = pauseBelow ?? attr.PauseBelow;
+            UIOpenMode resolvedOpenMode = openMode ?? attr.OpenMode;
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, address),
-                attr.Layer, attr.FullScreen, attr.AllowMulti, attr.Poolable, data,
+                attr.Layer, attr.FullScreen, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
+                attr.AllowMulti, attr.Poolable, data,
                 (view, error) =>
                 {
                     if (error != null)
@@ -336,7 +404,15 @@ namespace MyUI.Runtime
                     {
                         onOpened?.Invoke(view as UIPanel);
                     }
-                });
+                },
+                stackable: attr.Stackable);
+        }
+
+        /// <summary>保留旧四参数签名，兼容反射调用与既有编译代码。</summary>
+        public static void OpenPanel<T>(string address, object data,
+            Action<UIPanel> onOpened, Action<string> onFailed) where T : UIPanel
+        {
+            OpenPanel<T>(address, data, onOpened, onFailed, null, null, null);
         }
 
         /// <summary>地址解析优先级：显式地址 > 特性 Address > 加载器默认约定。</summary>
@@ -352,12 +428,16 @@ namespace MyUI.Runtime
         }
 
         /// <summary>打开面板的 Task 包装（回调版之上的语法糖；回调都发生在 Unity 主线程）。</summary>
-        public static Task<UIPanel> OpenPanelAsync<T>(object data = null) where T : UIPanel
+        public static Task<UIPanel> OpenPanelAsync<T>(object data = null,
+            UIInputMode? inputMode = null,
+            UIPauseBelowMode? pauseBelow = null,
+            UIOpenMode? openMode = null) where T : UIPanel
         {
             var tcs = new TaskCompletionSource<UIPanel>();
             OpenPanel<T>(data,
                 panel => tcs.TrySetResult(panel),
-                error => tcs.TrySetException(new InvalidOperationException("打开面板失败: " + error)));
+                error => tcs.TrySetException(new InvalidOperationException("打开面板失败: " + error)),
+                inputMode, pauseBelow, openMode);
             return tcs.Task;
         }
 
@@ -444,23 +524,7 @@ namespace MyUI.Runtime
         /// </summary>
         public static void Back()
         {
-            if (_instance == null || _instance._core == null)
-            {
-                return;
-            }
-
-            // 无返回历史：不动作（防止在根页面误关）
-            if (_instance._core.Navigation.Count == 0)
-            {
-                return;
-            }
-
-            _instance._core.Navigation.Pop(); // 消费一条历史
-            int top = _instance._core.GetTopOpenSerialId();
-            if (top >= 0)
-            {
-                _instance._core.ClosePanel(top, immediate: false);
-            }
+            _instance?._core?.Back();
         }
 
         /// <summary>由工厂注入（UIPanel.Close 转发到这里），内部用。</summary>

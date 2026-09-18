@@ -18,6 +18,9 @@ namespace MyUI.Core
         /// <summary>销毁视图（实现应转发到 IAssetLoader.ReleaseView 以同时释放资源句柄）。</summary>
         void DestroyView(IUIPanelView view);
 
+        /// <summary>释放尚未成功挂接的原始视图对象（初始化 / 挂接异常时使用）。</summary>
+        void ReleaseViewInstance(object viewInstance);
+
         /// <summary>设置视图激活状态（入池时 SetActive(false)，复用时 SetActive(true)）。</summary>
         void SetViewActive(IUIPanelView view, bool active);
 
@@ -32,8 +35,8 @@ namespace MyUI.Core
         void RefreshViewContext(IUIPanelView view, PanelRecord record);
 
         /// <summary>
-        /// 视图就绪通知：视图已挂接/激活完成、即将进入生命周期（新加载与池复用两条路径都会调用）。
-        /// Runtime 侧用于执行"入栈后按 Inspector 配置撤销"等打开时检查。
+        /// 视图就绪通知：视图已挂接 / 激活完成、即将进入生命周期（新加载与池复用两条路径都会调用）。
+        /// Runtime 侧可在此完成最后的实例配置；返回导航由 Core 在随后成功打开时统一登记。
         /// </summary>
         void OnViewReady(IUIPanelView view, PanelRecord record);
     }

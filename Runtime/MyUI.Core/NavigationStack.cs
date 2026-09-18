@@ -14,9 +14,13 @@ namespace MyUI.Core
 
         public int Count => _stack.Count;
 
-        public void Push(int serialId)
+        /// <summary>
+        /// 压入一条返回入口。allowDuplicate=true 用于允许多个面板登记同一个下层父面板，
+        /// 例如同时从主界面打开两个新页面时，每个页面都需要一条独立返回记录。
+        /// </summary>
+        public void Push(int serialId, bool allowDuplicate = false)
         {
-            if (_stack.Count > 0 && _stack[_stack.Count - 1] == serialId)
+            if (!allowDuplicate && _stack.Count > 0 && _stack[_stack.Count - 1] == serialId)
             {
                 return; // 防重复压栈
             }

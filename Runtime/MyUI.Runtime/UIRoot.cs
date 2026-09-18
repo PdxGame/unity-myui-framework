@@ -8,7 +8,8 @@ namespace MyUI.Runtime
 {
     /// <summary>
     /// UI 总根：常驻（DontDestroyOnLoad）；启动时为每个 UILayer 创建一个 Canvas 子节点。
-    /// 每层 sortingOrder = 层索引 x LayerOrderStep（100），层内面板按打开顺序用 SiblingIndex 排序。
+    /// 每层 sortingOrder = UILayerOrder.GetOrder(layer) x LayerOrderStep（100），
+    /// 层内面板按打开顺序用 SiblingIndex 排序。
     /// （QFramework UIRoot 固定层级思路 + GameFramework 每容器独立 Canvas 排序思路的结合。）
     /// </summary>
     [DisallowMultipleComponent]
@@ -16,6 +17,11 @@ namespace MyUI.Runtime
     {
         /// <summary>相邻层 Canvas 的 sortingOrder 步长。</summary>
         public const int LayerOrderStep = 100;
+
+        [Header("Canvas Scaling")]
+        [SerializeField] private Vector2 referenceResolution = new Vector2(1920f, 1080f);
+        [SerializeField, Range(0f, 1f)] private float matchWidthOrHeight = 0.5f;
+        [SerializeField] private bool pixelPerfect = true;
 
         private static UIRoot _instance;
 
@@ -53,9 +59,46 @@ namespace MyUI.Runtime
                 layerGo.transform.SetParent(transform, false);
                 var canvas = layerGo.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = (int)layer * LayerOrderStep;
+                canvas.sortingOrder = UILayerOrder.GetOrder(layer) * LayerOrderStep;
+                canvas.pixelPerfect = pixelPerfect;
+
+                var scaler = layerGo.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = referenceResolution;
+                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = matchWidthOrHeight;
+                scaler.referencePixelsPerUnit = 100f;
+
                 layerGo.AddComponent<GraphicRaycaster>();
                 _layers[layer] = (RectTransform)layerGo.transform;
+            }
+        }
+
+        private void OnValidate()
+        {
+            if (referenceResolution.x <= 0f || referenceResolution.y <= 0f)
+            {
+                referenceResolution = new Vector2(1920f, 1080f);
+            }
+        }
+
+        /// <summary>Destroy the auto-created UI root and clear its static instance.</summary>
+        public static void DestroyInstance()
+        {
+            if (_instance == null)
+            {
+                return;
+            }
+
+            GameObject root = _instance.gameObject;
+            _instance = null;
+            if (Application.isPlaying)
+            {
+                Destroy(root);
+            }
+            else
+            {
+                DestroyImmediate(root);
             }
         }
 

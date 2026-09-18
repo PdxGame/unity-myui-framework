@@ -10,7 +10,9 @@ namespace MyUI.Core
     public sealed class PanelRecord
     {
         public PanelRecord(int serialId, Type panelType, string panelName, string address,
-            UILayer layer, bool fullScreen, bool allowMulti, bool poolable, object userData)
+            UILayer layer, bool fullScreen, UIInputMode inputMode, UIPauseBelowMode pauseBelow,
+            UIOpenMode openMode, bool allowMulti, bool poolable, object userData,
+            bool stackable = true)
         {
             SerialId = serialId;
             PanelType = panelType;
@@ -18,9 +20,13 @@ namespace MyUI.Core
             Address = address;
             Layer = layer;
             FullScreen = fullScreen;
+            InputMode = inputMode;
+            PauseBelow = pauseBelow;
+            OpenMode = openMode;
             AllowMulti = allowMulti;
             Poolable = poolable;
             UserData = userData;
+            Stackable = stackable;
         }
 
         /// <summary>实例唯一标识（全局自增；GameFramework serialId 思路，可定向关闭某个实例）。</summary>
@@ -38,14 +44,35 @@ namespace MyUI.Core
         /// <summary>所属层级（构造时按特性/参数注入；AttachView 后可按 Inspector 配置覆盖）。</summary>
         public UILayer Layer { get; internal set; }
 
-        /// <summary>是否全屏：作为遮挡链顶端时会让其下方的面板进入暂停态（可被 Inspector 配置覆盖）。</summary>
+        /// <summary>是否全屏布局。Runtime 会据此把面板根节点拉伸到所在层。</summary>
         public bool FullScreen { get; internal set; }
+
+        /// <summary>输入阻断方式；Inherit 按 FullScreen 推导。</summary>
+        public UIInputMode InputMode { get; internal set; }
+
+        /// <summary>对下方面板的暂停策略；Inherit 按 FullScreen 推导。</summary>
+        public UIPauseBelowMode PauseBelow { get; internal set; }
+
+        /// <summary>打开策略；Inherit 按 Stackable 推导。</summary>
+        public UIOpenMode OpenMode { get; internal set; }
 
         /// <summary>是否允许多实例（Toast 类专用；默认 false 意味着重复打开只聚焦已有实例）。</summary>
         public bool AllowMulti { get; }
 
         /// <summary>关闭时是否入池复用（默认 true；可被 Inspector 配置覆盖）。</summary>
         public bool Poolable { get; internal set; }
+
+        /// <summary>
+        /// 是否参与返回导航（默认 true；代码特性与 Inspector 配置任一为 false 即不参与）。
+        /// 面板成功打开后才登记导航，加载失败 / 取消不会留下历史。
+        /// </summary>
+        public bool Stackable { get; internal set; }
+
+        /// <summary>
+        /// 本面板成功打开时登记的导航入口（其下方面板的 serialId）。
+        /// -1 表示没有导航入口；关闭本面板时只清理这一条入口及其上方记录。
+        /// </summary>
+        public int NavigationEntrySerialId { get; internal set; } = -1;
 
         /// <summary>打开时传入的用户数据（OnOpen 的入参；聚焦 / 取消关闭重开时可更新）。</summary>
         public object UserData { get; internal set; }
@@ -58,8 +85,29 @@ namespace MyUI.Core
         /// <summary>当前是否被上层面板遮挡（遮挡是几何事实，与暂停无关）。</summary>
         public bool Covered { get; internal set; }
 
-        /// <summary>当前是否暂停（被全屏遮挡链覆盖）。</summary>
+        /// <summary>当前是否暂停（被声明了 PauseBelow 的遮挡源覆盖）。</summary>
         public bool Paused { get; internal set; }
+
+        public UIInputMode EffectiveInputMode =>
+            InputMode == UIInputMode.Inherit
+                ? (FullScreen ? UIInputMode.Modal : UIInputMode.Self)
+                : InputMode;
+
+        public bool EffectivePauseBelow =>
+            PauseBelow == UIPauseBelowMode.Inherit
+                ? FullScreen
+                : PauseBelow == UIPauseBelowMode.Always;
+
+        public UIOpenMode EffectiveOpenMode =>
+            OpenMode == UIOpenMode.Inherit
+                ? (Stackable ? UIOpenMode.Push : UIOpenMode.Overlay)
+                : OpenMode;
+
+        /// <summary>该面板是否应对其下方形成逻辑遮挡。</summary>
+        public bool CoversBelow =>
+            FullScreen
+            || EffectiveInputMode == UIInputMode.Modal
+            || EffectivePauseBelow;
 
         /// <summary>生命周期视图（Runtime 侧即 UIPanel 组件；Core 只通过 IUIPanelView 驱动它）。</summary>
         public IUIPanelView View { get; internal set; }

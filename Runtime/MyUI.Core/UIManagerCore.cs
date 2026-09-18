@@ -13,14 +13,14 @@ namespace MyUI.Core
     ///
     /// 生命周期调用顺序（文档化契约，测试保证）：
     ///   打开：OnInit（仅首次）→ OnOpen(data) → OnShow
-    ///   遮挡：OnCover →（若遮挡链含全屏面板）OnPause
+    ///   遮挡：OnCover →（若遮挡源声明暂停下方）OnPause
     ///   露出：OnReveal → OnResume
     ///   关闭：OnHide →（延迟销毁可选）→ OnClose(pooled) → 入池或 OnDestroyed + 销毁
     ///
     /// 遮挡 / 暂停判定规则：
-    ///   遮挡（Covered）：同层内存在更晚打开的面板，或更高层存在 FullScreen 面板；
-    ///   暂停（Paused）：被遮挡 且 遮挡源中存在 FullScreen 面板。
-    ///   （即：非全屏弹窗只遮挡不暂停；飘字类 Toast 面板不参与遮挡；跨层遮挡必须全屏。）
+    ///   遮挡（Covered）：同层更晚打开的覆盖型面板，或更高层的覆盖型面板；
+    ///   暂停（Paused）：被遮挡 且 遮挡源声明 PauseBelow。
+    ///   （即：InputMode/PauseBelow 决定行为，FullScreen 只决定布局；Toast 不参与遮挡。）
     ///
     /// 单实例语义：未标注 AllowMulti 的面板重复打开 = 聚焦（重新 OnOpen/OnShow + 置顶）；
     /// 加载中的重复打开会合并，只触发一次加载。
@@ -48,9 +48,13 @@ namespace MyUI.Core
         /// <summary>延迟关闭队列（Closing 状态、等待销毁）。</summary>
         private readonly List<PanelRecord> _closing = new List<PanelRecord>();
 
+        /// <summary>Shutdown 时仍在加载的 serialId；迟到实例到达后只释放，不再挂接。</summary>
+        private readonly HashSet<int> _discardedLoads = new HashSet<int>();
+
         private int _nextSerialId = 1;
         private int _openOrder;
         private float _time;
+        private bool _disposed;
 
         /// <summary>关闭动画延迟销毁时长（秒）；0 = 立即销毁。</summary>
         public float CloseDelaySeconds { get; set; } = 0f;
@@ -87,9 +91,15 @@ namespace MyUI.Core
         /// 注：被取消的打开请求会收到 (null, "cancelled")。
         /// </summary>
         public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
-            bool fullScreen, bool allowMulti, bool poolable, object userData,
-            Action<object, string> onDone)
+            bool fullScreen, UIInputMode inputMode, UIPauseBelowMode pauseBelow, UIOpenMode openMode,
+            bool allowMulti, bool poolable, object userData,
+            Action<object, string> onDone, bool stackable = true)
         {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(UIManagerCore));
+            }
+
             if (panelType == null)
             {
                 throw new ArgumentNullException(nameof(panelType));
@@ -115,7 +125,7 @@ namespace MyUI.Core
             }
 
             var record = new PanelRecord(_nextSerialId++, panelType, panelName, address, layer,
-                fullScreen, allowMulti, poolable, userData);
+                fullScreen, inputMode, pauseBelow, openMode, allowMulti, poolable, userData, stackable);
             if (!allowMulti)
             {
                 _singles[panelName] = record;
@@ -125,6 +135,21 @@ namespace MyUI.Core
             _bySerial[record.SerialId] = record;
             record.OpenCallbacks.Add(onDone);
             BeginLoad(record);
+        }
+
+        /// <summary>
+        /// 兼容旧调用的重载：非全屏面板按旧的“遮挡但不暂停”语义处理。
+        /// 新代码应使用带 UIInputMode / UIPauseBelowMode / UIOpenMode 的重载。
+        /// </summary>
+        public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
+            bool fullScreen, bool allowMulti, bool poolable, object userData,
+            Action<object, string> onDone, bool stackable = true)
+        {
+            OpenPanel(panelType, panelName, address, layer, fullScreen,
+                fullScreen ? UIInputMode.Inherit : UIInputMode.Modal,
+                UIPauseBelowMode.Inherit,
+                UIOpenMode.Inherit,
+                allowMulti, poolable, userData, onDone, stackable);
         }
 
         /// <summary>单实例已存在时的合并 / 聚焦语义。返回 true 表示已处理（调用方不再新建）。</summary>
@@ -196,16 +221,25 @@ namespace MyUI.Core
                     _factory.RefreshViewContext(view, record); // 池复用：刷新 SerialId 等运行时字段
                     _factory.SetViewActive(view, true);
                     _factory.MoveToTop(view);
-                    _factory.OnViewReady(view, record); // 视图就绪（池复用路径：含入栈撤销检查）
+                    _factory.OnViewReady(view, record); // 视图就绪（池复用路径统一钩子）
+                    RegisterNavigation(record);
                     view.OnOpen(record.UserData);
                     view.OnShow();
+                    ApplyReplace(record);
                     CompleteOpen(record);
                     return;
                 }
             }
 
-            _loader.LoadViewAsync(record.Address, (viewInstance, error) =>
-                OnViewLoaded(record.SerialId, viewInstance, error));
+            try
+            {
+                _loader.LoadViewAsync(record.Address, (viewInstance, error) =>
+                    OnViewLoaded(record.SerialId, viewInstance, error));
+            }
+            catch (Exception e)
+            {
+                FinishWithError(record, "发起面板加载异常：" + e.Message);
+            }
         }
 
         /// <summary>加载完成（同步 / 异步加载器都会走到这里）。</summary>
@@ -213,7 +247,20 @@ namespace MyUI.Core
         {
             if (!_bySerial.TryGetValue(serialId, out PanelRecord record))
             {
-                return; // 理论上不可达（仅已取消且载荷已释放时）
+                // Dispose 期间尚未完成的加载：迟到实例到这里统一释放，避免资源泄漏。
+                if (_discardedLoads.Remove(serialId) && viewInstance != null)
+                {
+                    try
+                    {
+                        _factory.ReleaseViewInstance(viewInstance);
+                    }
+                    catch (Exception releaseError)
+                    {
+                        System.Diagnostics.Debug.WriteLine(releaseError);
+                    }
+                }
+
+                return;
             }
 
             if (!string.IsNullOrEmpty(error))
@@ -228,7 +275,26 @@ namespace MyUI.Core
                 return;
             }
 
-            IUIPanelView view = _factory.AttachView(record, viewInstance);
+            IUIPanelView view;
+            try
+            {
+                view = _factory.AttachView(record, viewInstance);
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    _factory.ReleaseViewInstance(viewInstance);
+                }
+                catch (Exception releaseError)
+                {
+                    // Keep the original initialization failure as the user-facing error.
+                    System.Diagnostics.Debug.WriteLine(releaseError);
+                }
+                FinishWithError(record, "面板视图初始化失败：" + e.Message);
+                return;
+            }
+
             record.View = view;
 
             if (record.State == PanelState.Closing || record.State == PanelState.Closed)
@@ -242,10 +308,12 @@ namespace MyUI.Core
             record.State = PanelState.Open;
             record.OpenOrder = ++_openOrder;
             _factory.MoveToTop(view);
-            _factory.OnViewReady(view, record); // 视图就绪（新建路径：含入栈撤销检查）
+            _factory.OnViewReady(view, record); // 视图就绪（新建路径统一钩子）
+            RegisterNavigation(record);
             view.OnInit();
             view.OnOpen(record.UserData);
             view.OnShow();
+            ApplyReplace(record);
             CompleteOpen(record);
         }
 
@@ -353,7 +421,12 @@ namespace MyUI.Core
                 _factory.SetViewActive(record.View, false);
             }
 
-            Navigation.Remove(record.SerialId);
+            if (record.NavigationEntrySerialId >= 0)
+            {
+                Navigation.Remove(record.NavigationEntrySerialId);
+                record.NavigationEntrySerialId = -1;
+            }
+
             RemoveRecord(record, notify: true, pooled: pooled);
         }
 
@@ -384,6 +457,7 @@ namespace MyUI.Core
         private void RemoveRecord(PanelRecord record, bool notify, bool pooled = false)
         {
             record.State = PanelState.Closed;
+            record.NavigationEntrySerialId = -1;
             _all.Remove(record);
             _bySerial.Remove(record.SerialId);
             if (!record.AllowMulti
@@ -420,6 +494,11 @@ namespace MyUI.Core
         /// <summary>每帧驱动：推进延迟关闭、池淘汰、遮挡 / 暂停刷新、活跃面板 OnTick。</summary>
         public void Tick(float deltaTime)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             _time += deltaTime;
 
             // 延迟关闭到点
@@ -488,7 +567,7 @@ namespace MyUI.Core
                 }
 
                 bool covered = false;
-                bool hasFullScreenAbove = false;
+                bool hasPauseBelowAbove = false;
                 foreach (PanelRecord other in snapshot)
                 {
                     if (other == record || other.State != PanelState.Open)
@@ -502,13 +581,13 @@ namespace MyUI.Core
                     }
 
                     covered = true;
-                    if (other.FullScreen)
+                    if (other.EffectivePauseBelow)
                     {
-                        hasFullScreenAbove = true;
+                        hasPauseBelowAbove = true;
                     }
                 }
 
-                bool paused = covered && hasFullScreenAbove;
+                bool paused = covered && hasPauseBelowAbove;
 
                 if (record.Covered != covered)
                 {
@@ -539,19 +618,27 @@ namespace MyUI.Core
         }
 
         /// <summary>
-        /// other 是否遮挡 target：
-        ///   同层：opened 更晚者遮挡更早者（无条件）；
-        ///   跨层：仅当 other 在更高层且 FullScreen 时才构成遮挡源（层间渲染顺序靠 Canvas，
-        ///   逻辑遮挡由全屏标记驱动 —— 飘字 Toast 不会误遮挡下层）。
+        /// other 是否遮挡 target。只有声明为覆盖型（全屏 / 模态 / PauseBelow）的面板
+        /// 才会形成遮挡，避免 HUD 或并排窗口仅因层级更高就误暂停下层面板。
         /// </summary>
         private static bool IsCovering(PanelRecord other, PanelRecord target)
         {
+            if (other.Layer == UILayer.Toast || target.Layer == UILayer.Toast)
+            {
+                return false;
+            }
+
+            if (!other.CoversBelow)
+            {
+                return false;
+            }
+
             if (other.Layer == target.Layer)
             {
                 return other.OpenOrder > target.OpenOrder;
             }
 
-            return other.Layer > target.Layer && other.FullScreen;
+            return UILayerOrder.IsAbove(other.Layer, target.Layer);
         }
 
         // ================= 查询 =================
@@ -586,26 +673,200 @@ namespace MyUI.Core
             return record != null && record.IsOpen;
         }
 
+        /// <summary>
+        /// 返回（Back）：有历史时关闭当前顶层面板；没有历史时保持根页面不动。
+        /// 关闭流程会按面板成功打开时登记的入口清理历史，避免手工关闭与 Back 重复消费记录。
+        /// </summary>
+        public void Back()
+        {
+            // 关闭动画期间忽略重复返回，避免在下层面板尚未露出时连续消费历史。
+            if (_disposed || _closing.Count > 0)
+            {
+                return;
+            }
+
+            PanelRecord top = GetTopOpenRecord(null, stackableOnly: false);
+            if (top == null)
+            {
+                return;
+            }
+
+            if (top.View is IUINavigationHandler navigationHandler
+                && navigationHandler.HandleBack())
+            {
+                return;
+            }
+
+            if (top.NavigationEntrySerialId < 0 || Navigation.Count == 0)
+            {
+                return;
+            }
+
+            // 返回动作立即消费本面板的导航入口；关闭流程不再重复清理。
+            if (top.NavigationEntrySerialId >= 0)
+            {
+                Navigation.Remove(top.NavigationEntrySerialId);
+                top.NavigationEntrySerialId = -1;
+            }
+
+            ClosePanel(top.SerialId, immediate: false);
+        }
+
         /// <summary>当前顶层面板的 serialId（最高层 + 层内最新）；无任何面板返回 -1（导航栈 Push 用）。</summary>
         public int GetTopOpenSerialId()
+        {
+            PanelRecord best = GetTopOpenRecord(null, stackableOnly: false);
+            return best != null ? best.SerialId : -1;
+        }
+
+        /// <summary>
+        /// 返回当前最高层的打开记录。stackableOnly=true 时只考虑参与返回导航的面板，
+        /// 并排除正在完成打开的当前记录。
+        /// </summary>
+        private PanelRecord GetTopOpenRecord(PanelRecord excluded, bool stackableOnly)
         {
             PanelRecord best = null;
             foreach (PanelRecord record in _all)
             {
-                if (record.State != PanelState.Open)
+                if (record == excluded || record.State != PanelState.Open)
+                {
+                    continue;
+                }
+
+                if (stackableOnly && !record.Stackable)
                 {
                     continue;
                 }
 
                 if (best == null
-                    || record.Layer > best.Layer
+                    || UILayerOrder.IsAbove(record.Layer, best.Layer)
                     || (record.Layer == best.Layer && record.OpenOrder > best.OpenOrder))
                 {
                     best = record;
                 }
             }
 
-            return best != null ? best.SerialId : -1;
+            return best;
+        }
+
+        /// <summary>
+        /// 面板成功打开后登记返回入口。登记发生在成功路径上，因此加载失败 / 取消不会污染导航栈。
+        /// 每个新面板登记一个当前最高可返回父面板；并发打开同一父面板时允许重复入口。
+        /// </summary>
+        private void RegisterNavigation(PanelRecord record)
+        {
+            record.NavigationEntrySerialId = -1;
+            if (!record.Stackable || record.EffectiveOpenMode != UIOpenMode.Push)
+            {
+                return;
+            }
+
+            PanelRecord parent = GetTopOpenRecord(record, stackableOnly: true);
+            if (parent == null)
+            {
+                return;
+            }
+
+            Navigation.Push(parent.SerialId, allowDuplicate: true);
+            record.NavigationEntrySerialId = parent.SerialId;
+        }
+
+        /// <summary>
+        /// Replace：新页面成功打开后，关闭被替换的可返回页面，并继承它的返回入口。
+        /// 不增加导航层级，因此 A -> Replace(B) 后 Back 仍然返回 A。
+        /// </summary>
+        private void ApplyReplace(PanelRecord record)
+        {
+            if (record.EffectiveOpenMode != UIOpenMode.Replace)
+            {
+                return;
+            }
+
+            PanelRecord replaced = GetTopOpenRecord(record, stackableOnly: true);
+            if (replaced == null)
+            {
+                return;
+            }
+
+            record.NavigationEntrySerialId = replaced.NavigationEntrySerialId;
+            replaced.NavigationEntrySerialId = -1;
+            BeginClose(replaced, immediate: false);
+        }
+
+        /// <summary>Release all active and pooled views and clear runtime state.</summary>
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            var released = new HashSet<object>();
+            PanelRecord[] records = _all.ToArray();
+            foreach (PanelRecord record in records)
+            {
+                if (record.View == null
+                    && (record.State == PanelState.Requested || record.State == PanelState.Loading))
+                {
+                    _discardedLoads.Add(record.SerialId);
+                }
+
+                IUIPanelView view = record.View;
+                if (view == null || !released.Add(view))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    view.OnClose(false);
+                }
+                catch
+                {
+                    // Shutdown must finish even if user lifecycle code throws.
+                }
+
+                try
+                {
+                    view.OnDestroyed();
+                    _factory.DestroyView(view);
+                }
+                catch
+                {
+                    // Continue releasing remaining views.
+                }
+            }
+
+            foreach (Queue<object> queue in _pool.Values)
+            {
+                while (queue.Count > 0)
+                {
+                    object pooled = queue.Dequeue();
+                    if (!released.Add(pooled) || !(pooled is IUIPanelView view))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        view.OnDestroyed();
+                        _factory.DestroyView(view);
+                    }
+                    catch
+                    {
+                        // Continue releasing remaining pooled views.
+                    }
+                }
+            }
+
+            _pool.Clear();
+            _pooledAt.Clear();
+            _closing.Clear();
+            _singles.Clear();
+            _bySerial.Clear();
+            _all.Clear();
+            Navigation.Clear();
+            _disposed = true;
         }
     }
 }

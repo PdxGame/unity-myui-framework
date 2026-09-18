@@ -22,7 +22,7 @@ namespace MyUI.Core
         /// <summary>重新露出。</summary>
         void OnReveal();
 
-        /// <summary>被全屏面板遮挡链覆盖，进入暂停态（应停止计时器 / 动画 / 输入响应）。</summary>
+        /// <summary>被声明 PauseBelow 的覆盖型面板遮挡，进入暂停态（应停止计时器 / 动画 / 输入响应）。</summary>
         void OnPause();
 
         /// <summary>暂停解除。</summary>

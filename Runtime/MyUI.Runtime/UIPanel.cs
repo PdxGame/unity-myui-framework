@@ -25,24 +25,36 @@ namespace MyUI.Runtime
         /// <summary>所属运行时管理器（由工厂注入；Close 用它发关闭请求）。</summary>
         public UIManager Manager { get; internal set; }
 
-        // ---- Inspector 可视化配置（优先于代码 [UIPanel] 特性）----
-        // 预制体上选中面板根节点即可在 Inspector 中直接勾选，无需为每个面板写特性。
+        // ---- Inspector 可视化配置（非默认值覆盖 / 收紧代码 [UIPanel] 特性）----
+        // 这样旧预制体没有保存字段时，不会用默认值吞掉代码特性。
 
-        /// <summary>所属层级（Inspector 选择；不勾选时按 [UIPanel] 特性或默认值 Normal）。</summary>
+        /// <summary>所属层级；Normal 为默认值，非 Normal 选择可覆盖 [UIPanel] 声明。</summary>
         [Tooltip("面板所属层级（示例：主菜单 Normal 全屏、窗口 Popup、飘字 Toast）")]
         [SerializeField] internal UILayer inspectorLayer = UILayer.Normal;
 
-        /// <summary>是否全屏：跨层遮挡源，全屏页面打开时其下层面板会暂停逻辑（Inspector 勾选）。</summary>
-        [Tooltip("全屏：作为跨层遮挡源，打开时其下层面板收到 OnCover/OnPause")]
+        /// <summary>是否全屏布局：与 [UIPanel] 任一为 true 即生效。</summary>
+        [Tooltip("全屏布局：打开时把根 RectTransform 拉伸到所属层")]
         [SerializeField] internal bool inspectorFullScreen = false;
+
+        /// <summary>输入阻断方式；Inherit 时全屏默认 Modal，非全屏默认 Self。</summary>
+        [Tooltip("输入阻断：Inherit / None / Self / Modal")]
+        [SerializeField] internal UIInputMode inspectorInputMode = UIInputMode.Inherit;
+
+        /// <summary>对下方面板的暂停策略；Inherit 时全屏暂停下方，非全屏不暂停。</summary>
+        [Tooltip("暂停下方：Inherit / Never / Always")]
+        [SerializeField] internal UIPauseBelowMode inspectorPauseBelow = UIPauseBelowMode.Inherit;
+
+        /// <summary>打开策略；Inherit 时 Stackable=true 为 Push，否则 Overlay。</summary>
+        [Tooltip("打开策略：Inherit / Overlay / Push / Replace")]
+        [SerializeField] internal UIOpenMode inspectorOpenMode = UIOpenMode.Inherit;
 
         /// <summary>关闭时是否入池复用（Inspector 勾选；默认勾选）。</summary>
         [Tooltip("关闭时入池复用，下次打开不重建实例")]
         [SerializeField] internal bool inspectorPoolable = true;
 
         /// <summary>
-        /// 参与返回导航（Inspector 勾选；默认勾选）。飘字/过场加载条等临时 UI 取消勾选，
-        /// 打开时不会记录返回路径；也可用特性 [UIPanel(Stackable = false)] 声明，任一为否即不入栈。
+        /// 兼容旧配置的返回开关（Inspector 勾选；默认勾选）。
+        /// OpenMode=Push 时参与返回；Overlay / Replace 不新增返回层级。
         /// </summary>
         [Tooltip("参与返回导航：取消勾选则打开时不影响返回历史（飘字/过场提示用）")]
         [SerializeField] internal bool inspectorStackable = true;
@@ -137,7 +149,7 @@ namespace MyUI.Runtime
         /// <summary>重新露出。</summary>
         protected virtual void OnReveal() { }
 
-        /// <summary>被全屏面板遮挡链覆盖，进入暂停态（应停止计时器 / 动画 / 输入响应）。</summary>
+        /// <summary>被声明 PauseBelow 的覆盖型面板遮挡，进入暂停态（应停止计时器 / 动画 / 输入响应）。</summary>
         protected virtual void OnPause() { }
 
         /// <summary>暂停解除。</summary>
