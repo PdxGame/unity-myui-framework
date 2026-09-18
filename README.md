@@ -45,6 +45,10 @@ Tests/
 
 ## 快速开始
 
+如果你第一次接触 MyUI，建议先阅读：
+
+[从零开始教程](Docs/MyUI-从零开始教程.md)
+
 ### 1. 初始化
 
 在项目启动入口调用一次 `UIManager.Init()`：
@@ -52,7 +56,7 @@ Tests/
 ```csharp
 using MyUI.Runtime;
 
-public sealed class GameBootstrap : MonoBehaviour
+public class GameBootstrap : MonoBehaviour
 {
     private void Awake()
     {
@@ -75,11 +79,11 @@ using MyUI.Runtime;
     UILayer.Normal,
     FullScreen = true,
     OpenMode = UIOpenMode.Push)]
-public sealed class EquipmentPanel : UIPanel
+public class EquipmentPanel : UIPanel
 {
     protected override void OnInit()
     {
-        BindButton("Btn_Close", Close);
+        BindButton("Btn_Close", () => Close());
     }
 }
 ```
@@ -327,6 +331,7 @@ UIManager.Init(new MyCustomAssetLoader());
 
 ## 文档
 
+- [从零开始教程](Docs/MyUI-从零开始教程.md)
 - [使用手册与实现原理](Docs/MyUI-使用手册与实现原理.md)
 - [UI 行为配置](#面板配置)
 - [导航策略](#导航)

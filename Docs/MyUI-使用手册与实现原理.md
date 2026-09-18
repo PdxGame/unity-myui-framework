@@ -64,7 +64,7 @@ Tests/                          EditMode 测试
 ```csharp
 using MyUI.Runtime;
 
-public sealed class GameBootstrap : MonoBehaviour
+public class GameBootstrap : MonoBehaviour
 {
     private void Awake()
     {
@@ -95,7 +95,7 @@ using UnityEngine;
     UILayer.Normal,
     FullScreen = true,
     OpenMode = UIOpenMode.Push)]
-public sealed class EquipmentPanel : UIPanel
+public class EquipmentPanel : UIPanel
 {
     private void OnCloseButton()
     {
@@ -351,7 +351,7 @@ OnDestroyed
 推荐传入业务 ID 与上下文，而不是让 UI 持有运行时数据源：
 
 ```csharp
-public sealed class ItemDetailOpenData
+public class ItemDetailOpenData
 {
     public long ItemInstanceId;
     public ItemSource Source;
@@ -416,7 +416,7 @@ UIManager.ClosePanel<SettingsPanel>();
 页面存在内部返回步骤时，实现 `IUINavigationHandler`：
 
 ```csharp
-public sealed class EquipmentPanel : UIPanel, IUINavigationHandler
+public class EquipmentPanel : UIPanel, IUINavigationHandler
 {
     public bool HandleBack()
     {
