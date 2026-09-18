@@ -31,15 +31,11 @@ namespace MyUI.Runtime
         [Tooltip("面板所属层级（示例：主菜单 Normal 全屏、窗口 Popup、飘字 Toast）")]
         [SerializeField] internal UILayer inspectorLayer = UILayer.Normal;
 
-        /// <summary>是否全屏布局：与 [UIPanel] 任一为 true 即生效。</summary>
-        [Tooltip("全屏布局：打开时把根 RectTransform 拉伸到所属层")]
-        [SerializeField] internal bool inspectorFullScreen = false;
-
-        /// <summary>输入阻断方式；Inherit 时全屏默认 Modal，非全屏默认 Self。</summary>
+        /// <summary>输入阻断方式；Inherit 等价于 Self。</summary>
         [Tooltip("输入阻断：Inherit / None / Self / Modal")]
         [SerializeField] internal UIInputMode inspectorInputMode = UIInputMode.Inherit;
 
-        /// <summary>对下方面板的暂停策略；Inherit 时全屏暂停下方，非全屏不暂停。</summary>
+        /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
         [Tooltip("暂停下方：Inherit / Never / Always")]
         [SerializeField] internal UIPauseBelowMode inspectorPauseBelow = UIPauseBelowMode.Inherit;
 

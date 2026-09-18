@@ -94,7 +94,6 @@ using UnityEngine.UI;
 
 [UIPanel(
     UILayer.Normal,
-    FullScreen = true,
     OpenMode = UIOpenMode.Push)]
 public class EquipmentPanel : UIPanel
 {
@@ -167,7 +166,6 @@ UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
 | 配置 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `Layer` | `UILayer` | `Normal` | 面板所属层级 |
-| `FullScreen` | `bool` | `false` | 是否自动拉伸根节点到所属层 |
 | `InputMode` | `UIInputMode` | `Inherit` | 输入阻断方式 |
 | `PauseBelow` | `UIPauseBelowMode` | `Inherit` | 是否暂停被覆盖的下层 |
 | `OpenMode` | `UIOpenMode` | `Inherit` | Overlay、Push 或 Replace |
@@ -178,28 +176,11 @@ UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
 
 `AllowMulti` 与 `Address` 需要在打开前读取，因此只支持特性配置。
 
-### 5.2 FullScreen
-
-`FullScreen = true`：
-
-- 面板打开时自动设置为全屏锚点
-- `anchorMin = (0, 0)`
-- `anchorMax = (1, 1)`
-- `anchoredPosition = (0, 0)`
-- `sizeDelta = (0, 0)`
-
-`FullScreen = false`：
-
-- 保留 Prefab 中的尺寸、锚点与布局
-- 适合窗口、弹窗、HUD、Toast
-
-`FullScreen` 只控制布局，不直接决定输入阻断或暂停逻辑。
-
-### 5.3 InputMode
+### 5.2 InputMode
 
 | 值 | 行为 |
 |---|---|
-| `Inherit` | `FullScreen=true` 时为 `Modal`，否则为 `Self` |
+| `Inherit` | 等价于 `Self` |
 | `None` | 不创建框架输入阻断器 |
 | `Self` | 依赖 Prefab 自身的 Graphic Raycast 设置 |
 | `Modal` | 自动创建全屏透明射线阻断器 |
@@ -212,11 +193,11 @@ __MyUI_ModalBlocker
 
 它的作用是阻止点击穿透到低层 Canvas。业务代码不需要主动管理该节点。
 
-### 5.4 PauseBelow
+### 5.3 PauseBelow
 
 | 值 | 行为 |
 |---|---|
-| `Inherit` | `FullScreen=true` 时暂停下层，否则不暂停 |
+| `Inherit` | 等价于 `Never` |
 | `Never` | 永远不因本面板暂停下层 |
 | `Always` | 本面板形成覆盖时暂停下层 |
 
@@ -224,9 +205,9 @@ __MyUI_ModalBlocker
 
 - 模态但不停逻辑：`InputMode=Modal`、`PauseBelow=Never`
 - 非模态但暂停逻辑：`InputMode=None`、`PauseBelow=Always`
-- 全屏模态并暂停：`FullScreen=true`，其余使用默认继承
+- 全屏模态并暂停：页面 Prefab 使用全屏锚点，并配置 `InputMode=Modal`、`PauseBelow=Always`
 
-### 5.5 OpenMode
+### 5.4 OpenMode
 
 | 值 | 行为 |
 |---|---|
@@ -235,7 +216,7 @@ __MyUI_ModalBlocker
 | `Push` | 保留当前页面并登记返回路径 |
 | `Replace` | 新页面成功后关闭当前可返回页面，不增加返回层级 |
 
-### 5.6 单次打开覆盖
+### 5.5 单次打开覆盖
 
 ```csharp
 UIManager.OpenPanel<ItemDetailPanel>(
@@ -279,7 +260,6 @@ Toast
 
 面板被判定为覆盖型需要满足至少一项：
 
-- `FullScreen = true`
 - `InputMode = Modal`
 - `PauseBelow = Always`
 
@@ -294,8 +274,11 @@ Toast
 ### 推荐组合
 
 ```csharp
-// 全屏页面：全屏、模态、暂停下层
-[UIPanel(UILayer.Normal, FullScreen = true)]
+// 全屏页面：布局由 Prefab 控制，输入、暂停显式配置
+[UIPanel(
+    UILayer.Normal,
+    InputMode = UIInputMode.Modal,
+    PauseBelow = UIPauseBelowMode.Always)]
 
 // 设置窗口：阻断输入，不暂停下层
 [UIPanel(
@@ -682,7 +665,6 @@ Core 不直接引用 Unity 对象，因此可以在 EditMode 中使用假加载�
 - `PanelName`
 - `Address`
 - `Layer`
-- `FullScreen`
 - `InputMode`
 - `PauseBelow`
 - `OpenMode`

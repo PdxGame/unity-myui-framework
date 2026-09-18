@@ -8,7 +8,6 @@ MyUI 是一个面向 Unity 2022.3+ 的轻量 UI 管理框架，基于 UGUI 与 T
 
 - 固定层级与独立 Canvas：`Background / Normal / HUD / Popup / Guide / System / Toast`
 - 面板生命周期：初始化、打开、显示、遮挡、暂停、恢复、关闭、销毁与实例池复用
-- 全屏布局：`FullScreen = true` 时自动拉伸面板根节点
 - 输入阻断：`InputMode` 控制是否创建全屏模态射线阻断器
 - 逻辑暂停：`PauseBelow` 独立控制是否暂停下层面板
 - 导航策略：`Overlay / Push / Replace`
@@ -79,7 +78,6 @@ using UnityEngine.UI;
 
 [UIPanel(
     UILayer.Normal,
-    FullScreen = true,
     OpenMode = UIOpenMode.Push)]
 public class EquipmentPanel : UIPanel
 {
@@ -134,7 +132,6 @@ UIManager.CloseAll();
 | 配置 | 取值 | 说明 |
 |---|---|---|
 | `Layer` | `UILayer` | 面板所在层级 |
-| `FullScreen` | `true / false` | 是否全屏布局；打开时自动拉伸根 `RectTransform` |
 | `InputMode` | `Inherit / None / Self / Modal` | 输入阻断方式；`Modal` 自动创建全屏透明阻断器 |
 | `PauseBelow` | `Inherit / Never / Always` | 是否暂停被其覆盖的下层面板 |
 | `OpenMode` | `Inherit / Overlay / Push / Replace` | 打开策略与返回层级规则 |
@@ -148,18 +145,21 @@ UIManager.CloseAll();
 未显式配置时：
 
 ```text
-InputMode   Inherit -> FullScreen ? Modal : Self
-PauseBelow  Inherit -> FullScreen ? Always : Never
+InputMode   Inherit -> Self
+PauseBelow  Inherit -> Never
 OpenMode    Inherit -> Stackable ? Push : Overlay
 ```
 
-`FullScreen` 只负责布局。需要全屏但不停逻辑时，设置 `PauseBelow = Never`；需要窗口尺寸但阻断输入时，设置 `InputMode = Modal`。
+页面尺寸与锚点完全由 Prefab 决定。需要阻断输入时设置 `InputMode = Modal`，需要暂停下层时设置 `PauseBelow = Always`。
 
 ### 常用组合
 
 ```csharp
-// 全屏页面：全屏布局、默认模态、默认暂停下层
-[UIPanel(UILayer.Normal, FullScreen = true)]
+// 全屏页面：布局由 Prefab 控制，输入、暂停显式配置
+[UIPanel(
+    UILayer.Normal,
+    InputMode = UIInputMode.Modal,
+    PauseBelow = UIPauseBelowMode.Always)]
 
 // 窗口弹窗：按 Prefab 尺寸显示，阻断输入但不暂停下层
 [UIPanel(

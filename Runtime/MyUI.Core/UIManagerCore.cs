@@ -20,7 +20,7 @@ namespace MyUI.Core
     /// 遮挡 / 暂停判定规则：
     ///   遮挡（Covered）：同层更晚打开的覆盖型面板，或更高层的覆盖型面板；
     ///   暂停（Paused）：被遮挡 且 遮挡源声明 PauseBelow。
-    ///   （即：InputMode/PauseBelow 决定行为，FullScreen 只决定布局；Toast 不参与遮挡。）
+    ///   （即：InputMode/PauseBelow 决定行为；Toast 不参与遮挡。面板尺寸由 Prefab 决定。）
     ///
     /// 单实例语义：未标注 AllowMulti 的面板重复打开 = 聚焦（重新 OnOpen/OnShow + 置顶）；
     /// 加载中的重复打开会合并，只触发一次加载。
@@ -91,7 +91,7 @@ namespace MyUI.Core
         /// 注：被取消的打开请求会收到 (null, "cancelled")。
         /// </summary>
         public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
-            bool fullScreen, UIInputMode inputMode, UIPauseBelowMode pauseBelow, UIOpenMode openMode,
+            UIInputMode inputMode, UIPauseBelowMode pauseBelow, UIOpenMode openMode,
             bool allowMulti, bool poolable, object userData,
             Action<object, string> onDone, bool stackable = true)
         {
@@ -125,7 +125,7 @@ namespace MyUI.Core
             }
 
             var record = new PanelRecord(_nextSerialId++, panelType, panelName, address, layer,
-                fullScreen, inputMode, pauseBelow, openMode, allowMulti, poolable, userData, stackable);
+                inputMode, pauseBelow, openMode, allowMulti, poolable, userData, stackable);
             if (!allowMulti)
             {
                 _singles[panelName] = record;
@@ -135,21 +135,6 @@ namespace MyUI.Core
             _bySerial[record.SerialId] = record;
             record.OpenCallbacks.Add(onDone);
             BeginLoad(record);
-        }
-
-        /// <summary>
-        /// 兼容旧调用的重载：非全屏面板按旧的“遮挡但不暂停”语义处理。
-        /// 新代码应使用带 UIInputMode / UIPauseBelowMode / UIOpenMode 的重载。
-        /// </summary>
-        public void OpenPanel(Type panelType, string panelName, string address, UILayer layer,
-            bool fullScreen, bool allowMulti, bool poolable, object userData,
-            Action<object, string> onDone, bool stackable = true)
-        {
-            OpenPanel(panelType, panelName, address, layer, fullScreen,
-                fullScreen ? UIInputMode.Inherit : UIInputMode.Modal,
-                UIPauseBelowMode.Inherit,
-                UIOpenMode.Inherit,
-                allowMulti, poolable, userData, onDone, stackable);
         }
 
         /// <summary>单实例已存在时的合并 / 聚焦语义。返回 true 表示已处理（调用方不再新建）。</summary>
@@ -618,7 +603,7 @@ namespace MyUI.Core
         }
 
         /// <summary>
-        /// other 是否遮挡 target。只有声明为覆盖型（全屏 / 模态 / PauseBelow）的面板
+        /// other 是否遮挡 target。只有声明为覆盖型（Modal / PauseBelow）的面板
         /// 才会形成遮挡，避免 HUD 或并排窗口仅因层级更高就误暂停下层面板。
         /// </summary>
         private static bool IsCovering(PanelRecord other, PanelRecord target)

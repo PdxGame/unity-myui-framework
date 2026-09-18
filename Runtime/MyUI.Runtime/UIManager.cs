@@ -236,7 +236,6 @@ namespace MyUI.Runtime
                 record.Layer = panel.inspectorLayer;
             }
 
-            record.FullScreen = record.FullScreen || panel.inspectorFullScreen;
             if (panel.inspectorInputMode != UIInputMode.Inherit)
             {
                 record.InputMode = panel.inspectorInputMode;
@@ -263,26 +262,12 @@ namespace MyUI.Runtime
                 panel.transform.SetParent(layerRoot, false);
             }
 
-            if (record.FullScreen)
-            {
-                StretchToLayer(panel.RectTransform);
-            }
-
             UIModalBlocker.Apply(panel.RectTransform, record.EffectiveInputMode == UIInputMode.Modal);
 
             panel.SerialId = record.SerialId;
             panel.PanelName = record.PanelName;
             panel.Layer = record.Layer;
             panel.Manager = _instance;
-        }
-
-        private static void StretchToLayer(RectTransform rectTransform)
-        {
-            rectTransform.anchorMin = Vector2.zero;
-            rectTransform.anchorMax = Vector2.one;
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            rectTransform.anchoredPosition = Vector2.zero;
-            rectTransform.sizeDelta = Vector2.zero;
         }
 
         void IUIPanelFactory.OnViewReady(IUIPanelView view, PanelRecord record)
@@ -336,7 +321,7 @@ namespace MyUI.Runtime
         /// <summary>
         /// 打开面板（泛型版）。data 会原样传给 UIPanel.OnOpen。
         /// onOpened / onFailed 只回调一次；单实例重复打开以现有实例聚焦回调。
-        /// 面板声明来自 [UIPanel] 特性（Layer / FullScreen / InputMode / PauseBelow / OpenMode 等），
+        /// 面板声明来自 [UIPanel] 特性（Layer / InputMode / PauseBelow / OpenMode 等），
         /// 未标注时按默认值（Normal 层、单实例、可入池）。
         /// </summary>
         public static void OpenPanel<T>(object data = null,
@@ -352,7 +337,7 @@ namespace MyUI.Runtime
             UIOpenMode resolvedOpenMode = openMode ?? attr.OpenMode;
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, null),
-                attr.Layer, attr.FullScreen, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
+                attr.Layer, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
                 attr.AllowMulti, attr.Poolable, data,
                 (view, error) =>
                 {
@@ -392,7 +377,7 @@ namespace MyUI.Runtime
             UIOpenMode resolvedOpenMode = openMode ?? attr.OpenMode;
             instance._core.OpenPanel(typeof(T), typeof(T).Name,
                 ResolveAddress(typeof(T), attr, instance._loader, address),
-                attr.Layer, attr.FullScreen, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
+                attr.Layer, resolvedInputMode, resolvedPauseBelow, resolvedOpenMode,
                 attr.AllowMulti, attr.Poolable, data,
                 (view, error) =>
                 {

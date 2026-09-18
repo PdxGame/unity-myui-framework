@@ -400,43 +400,30 @@ using MyUI.Runtime;
 
 [UIPanel(
     UILayer.Normal,
-    FullScreen = true,
     OpenMode = UIOpenMode.Push)]
 public class EquipmentPanel : UIPanel
 {
 }
 ```
 
-### 9.1 FullScreen
-
-`FullScreen = true`：
-
-- 自动把页面根节点拉伸到全屏
-- 不需要手动设置根节点锚点
-
-`FullScreen = false`：
-
-- 保留预制体自己的尺寸和锚点
-- 适合窗口、弹窗、HUD、Toast
-
-### 9.2 InputMode
+### 9.1 InputMode
 
 | 值 | 说明 |
 |---|---|
-| `Inherit` | 全屏默认 `Modal`，非全屏默认 `Self` |
+| `Inherit` | 等价于 `Self` |
 | `None` | 不创建输入阻断器 |
 | `Self` | 依赖预制体自身的 Raycast 设置 |
 | `Modal` | 创建全屏透明输入阻断器 |
 
-### 9.3 PauseBelow
+### 9.2 PauseBelow
 
 | 值 | 说明 |
 |---|---|
-| `Inherit` | 全屏默认暂停下层，非全屏默认不暂停 |
+| `Inherit` | 等价于 `Never` |
 | `Never` | 不暂停下层 |
 | `Always` | 覆盖下层时暂停下层 |
 
-### 9.4 OpenMode
+### 9.3 OpenMode
 
 | 值 | 说明 |
 |---|---|
@@ -448,7 +435,10 @@ public class EquipmentPanel : UIPanel
 
 ```csharp
 // 全屏页面
-[UIPanel(UILayer.Normal, FullScreen = true)]
+[UIPanel(
+    UILayer.Normal,
+    InputMode = UIInputMode.Modal,
+    PauseBelow = UIPauseBelowMode.Always)]
 
 // 设置窗口
 [UIPanel(
@@ -847,7 +837,7 @@ UIManager.IsOpen<ShopPanel>();
 2. 做一个只有打开和关闭的页面
 3. 学会 OnInit / OnOpen / OnClose
 4. 学会传数据
-5. 学会 FullScreen、InputMode、PauseBelow、OpenMode
+5. 学会 InputMode、PauseBelow、OpenMode
 6. 学会层级
 7. 学会 Push / Overlay / Replace
 8. 学会 Addressables 注册

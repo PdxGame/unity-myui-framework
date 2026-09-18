@@ -9,7 +9,10 @@ namespace MyUI.Examples
     /// 主菜单页（全屏）：标题 + 开始游戏 / 设置 / 退出三个按钮。
     /// 打开新页面只需 OpenPanel 一句（返回路径由框架自动记录，Back() 可回退）。
     /// </summary>
-    [UIPanel(UILayer.Normal, FullScreen = true)]
+    [UIPanel(
+        UILayer.Normal,
+        InputMode = UIInputMode.Modal,
+        PauseBelow = UIPauseBelowMode.Always)]
     public class MainMenuPanel : UIPanel
     {
         [SerializeField] private Button startButton;

@@ -10,7 +10,7 @@ namespace MyUI.Core
     public sealed class PanelRecord
     {
         public PanelRecord(int serialId, Type panelType, string panelName, string address,
-            UILayer layer, bool fullScreen, UIInputMode inputMode, UIPauseBelowMode pauseBelow,
+            UILayer layer, UIInputMode inputMode, UIPauseBelowMode pauseBelow,
             UIOpenMode openMode, bool allowMulti, bool poolable, object userData,
             bool stackable = true)
         {
@@ -19,7 +19,6 @@ namespace MyUI.Core
             PanelName = panelName;
             Address = address;
             Layer = layer;
-            FullScreen = fullScreen;
             InputMode = inputMode;
             PauseBelow = pauseBelow;
             OpenMode = openMode;
@@ -44,13 +43,10 @@ namespace MyUI.Core
         /// <summary>所属层级（构造时按特性/参数注入；AttachView 后可按 Inspector 配置覆盖）。</summary>
         public UILayer Layer { get; internal set; }
 
-        /// <summary>是否全屏布局。Runtime 会据此把面板根节点拉伸到所在层。</summary>
-        public bool FullScreen { get; internal set; }
-
-        /// <summary>输入阻断方式；Inherit 按 FullScreen 推导。</summary>
+        /// <summary>输入阻断方式；Inherit 等价于 Self。</summary>
         public UIInputMode InputMode { get; internal set; }
 
-        /// <summary>对下方面板的暂停策略；Inherit 按 FullScreen 推导。</summary>
+        /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
         public UIPauseBelowMode PauseBelow { get; internal set; }
 
         /// <summary>打开策略；Inherit 按 Stackable 推导。</summary>
@@ -89,14 +85,9 @@ namespace MyUI.Core
         public bool Paused { get; internal set; }
 
         public UIInputMode EffectiveInputMode =>
-            InputMode == UIInputMode.Inherit
-                ? (FullScreen ? UIInputMode.Modal : UIInputMode.Self)
-                : InputMode;
+            InputMode == UIInputMode.Inherit ? UIInputMode.Self : InputMode;
 
-        public bool EffectivePauseBelow =>
-            PauseBelow == UIPauseBelowMode.Inherit
-                ? FullScreen
-                : PauseBelow == UIPauseBelowMode.Always;
+        public bool EffectivePauseBelow => PauseBelow == UIPauseBelowMode.Always;
 
         public UIOpenMode EffectiveOpenMode =>
             OpenMode == UIOpenMode.Inherit
@@ -105,8 +96,7 @@ namespace MyUI.Core
 
         /// <summary>该面板是否应对其下方形成逻辑遮挡。</summary>
         public bool CoversBelow =>
-            FullScreen
-            || EffectiveInputMode == UIInputMode.Modal
+            EffectiveInputMode == UIInputMode.Modal
             || EffectivePauseBelow;
 
         /// <summary>生命周期视图（Runtime 侧即 UIPanel 组件；Core 只通过 IUIPanelView 驱动它）。</summary>

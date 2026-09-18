@@ -1,8 +1,8 @@
 namespace MyUI.Core
 {
     /// <summary>
-    /// 输入阻断方式。FullScreen 本身只负责布局，本枚举是独立的输入行为配置。
-    /// Inherit 的默认规则：全屏面板为 Modal，非全屏面板为 Self。
+    /// 输入阻断方式。面板尺寸由 Prefab 锚点决定，本枚举是独立的输入行为配置。
+    /// Inherit 使用 Self，即不创建框架自动阻断器。
     /// </summary>
     public enum UIInputMode
     {
@@ -20,7 +20,7 @@ namespace MyUI.Core
 
     /// <summary>
     /// 对下方面板的逻辑暂停策略。
-    /// Inherit 的默认规则：全屏面板暂停下方，非全屏面板不暂停。
+    /// Inherit 使用 Never，即不因本面板自动暂停下层。
     /// </summary>
     public enum UIPauseBelowMode
     {

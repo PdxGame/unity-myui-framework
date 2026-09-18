@@ -1,6 +1,6 @@
 {
   "name": "com.pdxgame.myui",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "displayName": "MyUI Framework",
   "description": "Lightweight Unity UI management framework: full-screen layout, explicit modal input blocking, cover/pause policies, panel lifecycle, fixed layers, instance pooling and push/overlay/replace navigation. Core is pure C#. Addressables is the default loader (optional assembly with Resources fallback).",
   "unity": "2022.3",
