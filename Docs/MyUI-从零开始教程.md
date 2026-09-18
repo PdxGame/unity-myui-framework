@@ -417,7 +417,7 @@ public class EquipmentPanel : UIPanel
 
 | 值 | 说明 |
 |---|---|
-| `Inherit` | 等价于 `Never` |
+| `Inherit` | 不在 Prefab 覆盖，使用 `[UIPanel]` 的值；代码也未设置时不暂停 |
 | `Never` | 不暂停下层 |
 | `Always` | 覆盖下层时暂停下层 |
 

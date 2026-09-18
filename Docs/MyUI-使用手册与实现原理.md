@@ -167,7 +167,7 @@ UIManager.OpenPanel<ItemDetailPanel>(new ItemDetailOpenData
 |---|---|---|---|
 | `Layer` | `UILayer` | `Normal` | 面板所属层级 |
 | `BlockInput` | `bool` | `false` | 是否创建全屏透明输入阻断器 |
-| `PauseBelow` | `UIPauseBelowMode` | `Inherit` | 是否暂停被覆盖的下层 |
+| `PauseBelow` | `UIPauseBelowMode` | `Inherit` | `Inherit` 使用特性配置；两边都未配置时不暂停 |
 | `OpenMode` | `UIOpenMode` | `Push` | Overlay、Push 或 Replace |
 | `Poolable` | `bool` | `true` | 关闭后是否进入实例池 |
 | `AllowMulti` | `bool` | `false` | 是否允许同类型多实例 |
@@ -194,7 +194,7 @@ __MyUI_ModalBlocker
 
 | 值 | 行为 |
 |---|---|
-| `Inherit` | 等价于 `Never` |
+| `Inherit` | 不在 Prefab 覆盖，使用 `[UIPanel]` 的值；代码也未设置时不暂停 |
 | `Never` | 永远不因本面板暂停下层 |
 | `Always` | 本面板形成覆盖时暂停下层 |
 

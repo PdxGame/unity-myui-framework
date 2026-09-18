@@ -133,7 +133,7 @@ UIManager.CloseAll();
 |---|---|---|
 | `Layer` | `UILayer` | 面板所在层级 |
 | `BlockInput` | `true / false` | `true` 自动创建全屏透明阻断器；`false` 依赖 Prefab 自身射线设置 |
-| `PauseBelow` | `Inherit / Never / Always` | 是否暂停被其覆盖的下层面板 |
+| `PauseBelow` | `Inherit / Never / Always` | `Inherit` 使用代码配置，两边都未配置时不暂停；`Never / Always` 强制执行 |
 | `OpenMode` | `Overlay / Push / Replace` | 打开策略与返回层级规则，默认 `Push` |
 | `Poolable` | `true / false` | 关闭后是否进入实例池 |
 | `AllowMulti` | `true / false` | 是否允许同类型多实例，仅特性配置 |
@@ -144,7 +144,7 @@ UIManager.CloseAll();
 未显式配置时：
 
 ```text
-PauseBelow  Inherit -> Never
+PauseBelow  Inherit（代码也未配置）-> Never
 OpenMode    Push
 ```
 

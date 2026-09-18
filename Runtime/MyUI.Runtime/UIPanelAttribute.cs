@@ -24,7 +24,7 @@ namespace MyUI.Runtime
         /// <summary>是否创建全屏输入阻断器。默认 false，依赖 Prefab 自身射线设置。</summary>
         public bool BlockInput { get; set; } = false;
 
-        /// <summary>对下方面板的暂停策略。默认 Inherit，等价于 Never。</summary>
+        /// <summary>对下方面板的暂停策略。默认 Inherit：未显式配置时不暂停。</summary>
         public UIPauseBelowMode PauseBelow { get; set; } = UIPauseBelowMode.Inherit;
 
         /// <summary>打开策略。默认 Push。</summary>

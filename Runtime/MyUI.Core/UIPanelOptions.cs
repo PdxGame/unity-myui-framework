@@ -2,7 +2,7 @@ namespace MyUI.Core
 {
     /// <summary>
     /// 对下方面板的逻辑暂停策略。
-    /// Inherit 使用 Never，即不因本面板自动暂停下层。
+    /// Inherit 表示这里未指定；代码和 Prefab 都未指定时按 Never 处理。
     /// </summary>
     public enum UIPauseBelowMode
     {

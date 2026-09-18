@@ -35,8 +35,9 @@ namespace MyUI.Runtime
         [Tooltip("是否创建全屏透明输入阻断层。true 阻止点击穿透到下层；false 只依赖 Prefab 自身的 Raycast Target。")]
         [SerializeField] internal bool inspectorBlockInput = false;
 
-        /// <summary>对下方面板的暂停策略；Inherit 等价于 Never。</summary>
-        [Tooltip("是否暂停被本面板遮挡的下层面板。Inherit / Never 表示不暂停；Always 只暂停下层逻辑，不负责输入阻断。")]
+        /// <summary>对下方面板的暂停策略。Inherit 保留 [UIPanel] 配置；代码也未配置时不暂停。</summary>
+        [Tooltip("PauseBelow 覆盖。Inherit：不在 Prefab 覆盖，使用 [UIPanel] 的值；代码也未设置时不暂停。" +
+            "Never：强制不暂停。Always：强制暂停下层逻辑，不负责输入阻断。")]
         [SerializeField] internal UIPauseBelowMode inspectorPauseBelow = UIPauseBelowMode.Inherit;
 
         /// <summary>打开策略。</summary>
